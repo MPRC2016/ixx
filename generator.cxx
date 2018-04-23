@@ -303,7 +303,7 @@ void Generator::emit_str(const char* s, long length) {
     if (column_ == 0) {
 	emit_tab();
     }
-    fputs(s, out_);
+    if (s) fputs(s, out_);
     column_ += length;
 }
 
