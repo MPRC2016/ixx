@@ -1,0 +1,215 @@
+/*
+ * Copyright (c) 1993 Silicon Graphics, Inc.
+ * Copyright (c) 1993 Fujitsu, Ltd.
+ *
+ * Permission to use, copy, modify, distribute, and sell this software and 
+ * its documentation for any purpose is hereby granted without fee, provided
+ * that (i) the above copyright notices and this permission notice appear in
+ * all copies of the software and related documentation, and (ii) the name of
+ * Silicon Graphics and Fujitsu may not be used in any advertising or
+ * publicity relating to the software without the specific, prior written
+ * permission of Silicon Graphics and Fujitsu.
+ *
+ * THE SOFTWARE IS PROVIDED "AS-IS" AND WITHOUT WARRANTY OF ANY KIND, 
+ * EXPRESS, IMPLIED OR OTHERWISE, INCLUDING WITHOUT LIMITATION, ANY 
+ * WARRANTY OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.  
+ *
+ * IN NO EVENT SHALL SILICON GRAPHICS OR FUJITSU BE LIABLE FOR
+ * ANY SPECIAL, INCIDENTAL, INDIRECT OR CONSEQUENTIAL DAMAGES OF ANY KIND,
+ * OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+ * WHETHER OR NOT ADVISED OF THE POSSIBILITY OF DAMAGE, AND ON ANY THEORY OF 
+ * LIABILITY, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE 
+ * OF THIS SOFTWARE.
+ */
+
+#ifndef Fresco_figures_idl
+#define Fresco_figures_idl
+
+#include <X11/Fresco/Interfaces/drawing.idl>
+#include <X11/Fresco/Interfaces/glyph.idl>
+
+//- FigureStyle*
+interface FigureStyle : Style {
+    //. A figure style provides a type-checked interface to the
+    //. predefined figure attributes.
+
+    //- background
+    attribute Color background;
+	//. Figures with a "fill_stroke" mode use the background
+	//. color for filling.
+
+    //- brush
+    attribute Brush brush_attr;
+	//. Figures with a "stroke" or "fill_stroke" mode use
+	//. the brush to draw the outline of the figure.
+
+    //- font
+    attribute Font font_attr;
+	//. Labels use the font attribute for drawing and computing
+	//. the bounding box of labels.
+
+    //- foreground
+    attribute Color foreground;
+	//. Figures with a "fill" mode use the foreground color
+	//. for filling.  Figures with a "stroke" or
+	//. "fill_stroke" mode use the foreground color
+	//. to draw the outline of the figure.
+};
+
+//- FigureKit*
+interface FigureKit : FrescoObject {
+    //. FigureKit provides operations for creating common
+    //. two-dimensional figures, including as rectangles, circles,
+    //. polygons, and B-splines.  Once created, figures cannot be
+    //. altered other than through the transformation matrix
+    //. accessed by the Glyph::transform operation.
+    //.
+    //. All figures have a style defined by the FigureStyle interface,
+    //. which can be accessed by getting the Glyph::style attribute.
+    //. Setting a figure's style using the Glyph::style attribute
+    //. will actually set the parent style.  Furthermore, because
+    //. of the one-to-one relationship between a figure and its style,
+    //. an implementation may choose to represent the figure and
+    //. style as a single object that supports both interfaces
+    //. (where retrieving a figure's style simply returns the
+    //. figure itself).
+
+    //- Vertices
+    typedef sequence<Vertex> Vertices;
+	//. The Vertices type defines a sequence of vertex structures
+	//. for figures with an arbitrary number of vertices,
+	//. such as polygons and B-splines.
+
+    //- Mode
+    enum Mode { fill, stroke, fill_stroke };
+	//. Mode is an enumeration type the controls figure drawing.
+	//. If the mode is "fill" then the figure fills its area
+	//. with its style's foreground color.  If the mode is "stroke"
+	//. then the figure paints its outline with its style's brush and
+	//. foreground color.  If the mode is "fill_stroke" then
+	//. the figure fills its area with its style's background color and
+	//. paints the outline with the style's brush and foreground color.
+
+    //- default_style
+    FigureStyle default_style();
+	//. Return a default style to use for figures.
+
+    //- new_style
+    FigureStyle new_style(in Style parent);
+	//. Return a new figure style that inherits from the given style.
+
+    //- figure_root
+    Glyph figure_root(in Glyph child);
+	//. Return a glyph that centers its body by transformation.
+	//. This kind of glyph should be put around a collection
+	//. of figures that are inside a layout object such as a box.
+
+    //- label
+    Glyph label(in FigureStyle s, in CharString str);
+	//. Return a text label with the given style.
+
+    //- point
+    Glyph point(in FigureStyle s, in Coord x, in Coord y);
+	//. Return a figure that draws a point in the foreground color
+	//. of the given style.
+
+    //- line
+    Glyph line(
+	in FigureStyle s, in Coord x0, in Coord y0, in Coord x1, in Coord y1
+    );
+	//. Return a figure that draws a line from (x0,y0) to (x1,y1)
+	//. using the brush and foreground color of the given style.
+
+    //- rectangle
+    Glyph rectangle(
+	in FigureKit::Mode m, in FigureStyle s,
+	in Coord left, in Coord bottom, in Coord right, in Coord top
+    );
+	//. Return a rectangle with lower-left corner (left,bottom) and
+	//. upper-right corner (right,top).  The mode parameter controls
+	//. whether the rectangle is filled, stroked, or both.
+	//. The style parameter controls which brush and colors are used
+	//. for drawing.
+
+    //- circle
+    Glyph circle(
+	in FigureKit::Mode m, in FigureStyle s,
+	in Coord x, in Coord y, in Coord r
+    );
+	//. Return a circle with center (x,y) and radius r.
+	//. The mode parameter controls whether the circle
+	//. is filled, stroked, or both.  The style parameter
+	//. controls which brush and colors are used for drawing.
+
+    //- ellipse
+    Glyph ellipse(
+	in FigureKit::Mode m, in FigureStyle s,
+	in Coord x, in Coord y, in Coord r1, in Coord r2
+    );
+	//. Return an ellipse with center (x,y) and radii r1 and r2.
+	//. The mode parameter controls whether the ellipse
+	//. is filled, stroked, or both.  The style parameter
+	//. controls what brush and colors are used for drawing.
+
+    //- open_bspline
+    Glyph open_bspline(
+	in FigureKit::Mode m, in FigureStyle s, in FigureKit::Vertices v
+    );
+	//. Return a B-spline curve that uses the given vertices
+	//. as control points.  The curve is "open" in that
+	//. the last and first control points are not connected.
+	//. The mode parameter controls whether the area is filled,
+	//. stroked, or both.  The style parameter controls which
+	//. brush and colors are used for drawing.
+
+    //- closed_bspline
+    Glyph closed_bspline(
+	in FigureKit::Mode m, in FigureStyle s, in FigureKit::Vertices v
+    );
+	//. Return a B-spline curve that uses the given vertices
+	//. as control points.  The curve is "closed" in that
+	//. the last and first control points are automatically connected.
+	//. The mode parameter controls whether the area is filled,
+	//. stroked, or both.  The style parameter controls which
+	//. brush and colors are used for drawing.
+
+    //- multiline
+    Glyph multiline(
+	in FigureKit::Mode m, in FigureStyle s, in FigureKit::Vertices v
+    );
+	//. Return a list of lines defined by pair-wise of vertices,
+	//. effectively yielding an "open" polygon.  The mode parameter
+	//. controls whether the area is filled, stroked, or both.
+	//. The style parameter controls which
+	//. brush and colors are used for drawing.
+
+    //- polygon
+    Glyph polygon(
+	in FigureKit::Mode m, in FigureStyle s, in FigureKit::Vertices v
+    );
+	//. Return the polygon defined by the given vertices.
+	//. The last and first vertices are automatically connected.
+	//. The mode parameter controls whether the area is filled,
+	//. stroked, or both.  The style parameter controls which
+	//. brush and colors are used for drawing.
+
+    //- fitter
+    Glyph fitter(in Glyph g);
+	//. Return a glyph that simply transforms its body to fit
+	//. into the space available.  That is, a fitter uses
+	//. its allocation and its body's requested size to compute
+	//. a transform to make the two sizes match.  The fitter
+	//. uses this transform during a traversal so that the
+	//. body will be allocated its natural size, but will be
+	//. transformed to drawn within the fitter's area.
+
+    //- group
+    Glyph group();
+	//. Return a group that can contain one or more figures.
+
+    /*
+     * Also need to support embedded objects, e.g., text, images.
+     */
+};
+
+#endif

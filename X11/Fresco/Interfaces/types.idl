@@ -1,0 +1,638 @@
+/*
+ * Copyright (c) 1992-1993 Silicon Graphics, Inc.
+ * Copyright (c) 1993 Fujitsu, Ltd.
+ *
+ * Permission to use, copy, modify, distribute, and sell this software and 
+ * its documentation for any purpose is hereby granted without fee, provided
+ * that (i) the above copyright notices and this permission notice appear in
+ * all copies of the software and related documentation, and (ii) the names of
+ * Silicon Graphics and Fujitsu may not be used in any advertising or
+ * publicity relating to the software without the specific, prior written
+ * permission of Silicon Graphics and Fujitsu.
+ *
+ * THE SOFTWARE IS PROVIDED "AS-IS" AND WITHOUT WARRANTY OF ANY KIND, 
+ * EXPRESS, IMPLIED OR OTHERWISE, INCLUDING WITHOUT LIMITATION, ANY 
+ * WARRANTY OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.  
+ *
+ * IN NO EVENT SHALL SILICON GRAPHICS OR FUJITSU BE LIABLE FOR
+ * ANY SPECIAL, INCIDENTAL, INDIRECT OR CONSEQUENTIAL DAMAGES OF ANY KIND,
+ * OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+ * WHETHER OR NOT ADVISED OF THE POSSIBILITY OF DAMAGE, AND ON ANY THEORY OF 
+ * LIABILITY, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE 
+ * OF THIS SOFTWARE.
+ */
+
+#ifndef Fresco_types_idl
+#define Fresco_types_idl
+
+#include <X11/Fresco/Ox/Interfaces/object.idl>
+
+//- Tag
+typedef unsigned long Tag;
+    //. A tag represents a value used for associative access.
+    //. Typically, tags are returned when an association is created and
+    //. passed to remove or otherwise refer to the association.
+    //. Tags are always \emphasis{relative} to the object that
+    //. creates them; they are not unique ids.
+//-
+
+/*
+ * Base type for all Fresco interfaces.
+ */
+
+//- FrescoObject
+interface FrescoObject {
+    //. All Fresco objects support the FrescoObject interface,
+    //. which defines operations for accessing an object's type and
+    //. for holding a reference to an object.
+
+    long ref__(in long references);
+
+    //- attach, detach, disconnect
+    Tag attach(in FrescoObject observer);
+    void detach(in Tag attach_tag);
+    void disconnect();
+	//. To avoid circularities, an object may have an "uncounted"
+	//. reference to another object.  To ensure the reference
+	//. is valid, the holder of an uncounted reference may "attach"
+	//. to the referenced object, and "detach" when no longer storing
+	//. a reference to the object or be notified via the "disconnect"
+	//. operation if the object is destroyed.  The tag returned
+	//. from the attach operation is the value that should be passed
+	//. to the detach operation.
+	//.
+	//. One may call the attach and detach operations
+	//. on any object, but the object's implementation may choose
+	//. to ignore these requests.  Thus, this functionality
+	//. has no \emphasis{required} overhead per object.
+	//. This approach allows a simple interface
+	//. to objects while giving flexibility to implementations.
+
+    //- notify_observers, update
+    void notify_observers();
+    void update();
+	//. Uncounted references (see the attach operation) provide
+	//. a simple mechanism for update notification.  All objects
+	//. support a "notify_observers" operation for the object
+	//. being observed and an "update" operation for the observer.
+};
+
+/*
+ * Basic Fresco types
+ */
+
+//- CharCode
+typedef long CharCode;
+    //. CharCode is a value that denotes a character from
+    //. a particular character set, such as Unicode.
+//-
+
+//- CharString
+interface CharString : FrescoObject {
+    //. CharString represents a sequence of characters,
+    //. where a character is a logical value rather than
+    //. a specific physical size.
+
+    //- Data
+    typedef sequence<CharCode> Data;
+	//. The data in a character string can be interpreted
+	//. as a sequence of character codes.
+
+    //- CharData
+    typedef sequence<char> CharData;
+	//. The CharData type is useful for extracting the data
+	//. from 8-bit strings.
+
+    //- HashValue
+    typedef unsigned long HashValue;
+	//. A hash value is computed from the characters in the string.
+	//. If the hash values of two strings are different, then the
+	//. strings differ in content.  If the hash values are the same,
+	//. the strings may or may not differ.
+
+    //- hash
+    HashValue hash();
+	//. Return a hash value for the string.
+
+    //- count
+    long count();
+	//. Return the number of characters in the string.
+
+    //- copy
+    void copy(in CharString s);
+	//. Copy the contents of the given string into this string.
+
+    //- equal, case_insensitive_equal
+    boolean equal(in CharString s);
+    boolean case_insensitive_equal(in CharString s);
+	//. Compare two strings and return true if they contain
+	//. the same characters.  The case_insensitive_equal operation
+	//. returns true if the strings only differ in case.
+
+    //- get_data, get_char_data
+    void get_data(inout Data d);
+    void get_char_data(inout CharData d);
+	//. Retrieve the characters in the string as a sequence
+	//. of either 8-bit values or character codes.  The parameters
+	//. are inout so that a caller can provide a buffer.
+
+    //- put_data, put_char_data
+    void put_data(in Data d);
+    void put_char_data(in CharData d);
+	//. Store the given 8-bit or character code data
+	//. into the string.
+};
+
+//- Coord
+typedef float Coord;
+    //. User interface objects specify positions and sizes in terms
+    //. of coordinates.  The Coord type represents a position or distance
+    //. in units of printer's points (1/72 of an inch).  Coord might
+    //. better be defined as an interface from the perspective
+    //. of abstraction, but for practical reasons it is defined
+    //. as a typedef.  For applications with simple graphics needs,
+    //. the use of floating point coordinates is typically
+    //. not a problem.  Applications with more sophisticated text
+    //. or graphics usually need to manipulate floating point
+    //. coordinates anyway.
+//-
+
+//- PixelCoord
+typedef long PixelCoord;
+    //. The PixelCoord type represents a position or distance in
+    //. units of screen pixels.  PixelCoord values are inherently
+    //. resolution-dependent and generally should be avoided.
+    //. However, some user interfaces need to guarantee that they
+    //. produce output that is precisely balanced in terms of pixels.
+    //. Coord values are resolution-independent, but one cannot rely
+    //. on precise output at low resolutions.  Coordinates are normally
+    //. rounded-off to guarantee that objects that abut in coordinates
+    //. will abut on the screen.
+    //.
+    //. This approach introduces the possibility that the same Coord
+    //. value might be converted to two different PixelCoord values.
+    //. To avoid such an occurrence, an application object should
+    //. convert the coordinate value to a PixelCoord and then back
+    //. to a Coord before using it.
+//-
+
+//- Axis
+enum Axis { X_axis, Y_axis, Z_axis };
+    //. Axis is a type for specifying a dimension of cartesian coordinates.
+    //. Many user interface operations, especially involving layout,
+    //. can be parameterized by dimension.
+//-
+
+//- Vertex
+struct Vertex { Coord x, y, z; };
+    //. A vertex is a 3-dimensional point.  A Fresco implementation
+    //. may only implement 2d operations and therefore will ignore
+    //. the z-field of vertices.
+//-
+
+//- Alignment
+typedef float Alignment;
+    //. An alignment is a floating point value that represents
+    //. a relative position.  Alignments are typically between
+    //. zero and one inclusive, with zero indicating the position
+    //. is aligned with the lower point and one indicating
+    //. alignment with the higher point.  For example, an alignment
+    //. of zero along the X-axis indicates that the position
+    //. is left-aligned, a value of one means the position is
+    //. right-aligned.
+//-
+
+//- Action
+interface Action : FrescoObject {
+    //. An action executes some functionality with no parameters and
+    //. no return value.  An action may be undo-able, though it is
+    //. up to the action itself to save the necessary state for undo.
+
+    //- execute
+    void execute();
+	//. Perform the action.
+
+    //- reversible
+    boolean reversible();
+	//. Return whether the action can be undone.
+
+    //- unexecute
+    void unexecute();
+	//. Undo the previously done action.  If the action has not
+	//. been done or was most recently undone, then this operation
+	//. has no effect.  This operation is also likely to fail
+	//. if intermediate operations have been executed (and not unexecuted)
+	//. since the execute operation was most recently called.
+};
+
+interface Transform;
+
+//- Region
+interface Region : FrescoObject {
+    //. A region is an area or volume within an object's coordinate
+    //. space.  A region may be described by a surface, curve, path,
+    //. or other geometric means.  Regions define an origin as a point
+    //. of reference (the origin is not required to be contained
+    //. inside the region).  A region implementation may choose
+    //. only to support a bounding box representation.
+    //.
+    //. Regions are used for a variety of purposes, including
+    //. the allocation an object receives as part of layout,
+    //. the extension that an object covers when drawn, the portion
+    //. of a window that needs to be updated, and the current
+    //. clipping area.  Some regions, such as the update area
+    //. in a window, are 2-dimensional and aligned to the xy-plane.
+    //. We refer to these regions as "xy-regions" and consider them
+    //. to have a z-coordinate with value zero and no thickness.
+
+    //- BoundingSpan
+    struct BoundingSpan {
+	Coord begin, end;
+	Coord origin, length;
+	Alignment align;
+    };
+	//. A bounding span is a one-dimensional coordinate range with
+	//. an origin value as a reference.  The begin, end, and
+	//. align fields define a bounding span.  The length is always
+	//. equal to end minus begin, and the origin is always equal
+	//. to begin plus length times align.
+
+    //- contains, contains_plane, intersects
+    boolean contains(in Vertex v);
+    boolean contains_plane(in Vertex v, in Axis a);
+    boolean intersects(in Region r);
+	//. Determine is a region intersects a point or
+	//. another region.  The contains_plane operation
+	//. only compares coordinates \emphasis{not}
+	//. in the given axis.  For example, to test
+	//. if a given point is in the xy-plane
+	//. (therefore ignoring its z-coordinate),
+	//. one would pass Z_axis as the second parameter.
+
+    //- copy
+    void copy(in Region r);
+	//. Copy the given region into this region.  This operation
+	//. is equivalent to setting this region to the empty region and
+	//. then calling merge_union on the given region.
+
+    //- merge_intersect, merge_union
+    void merge_intersect(in Region r);
+    void merge_union(in Region r);
+	//. Modify a region to merge the values of another region.
+	//. The merge_intersect operation sets the region to be
+	//. the intersection of itself with the given region;
+	//. merge_union sets the region to cover both regions.
+	//. For both operations, the origin of the region is unchanged.
+
+    //- subtract
+    void subtract(in Region r);
+	//. Set this region to be the difference between itself and
+	//. the intersection of itself and the given region.
+	//. The origin of the region is unchanged.
+
+    //- apply_transform
+    void apply_transform(in Transform t);
+	//. Set this region to be the region that results from
+	//. the given transformation applied to the original region.
+	//. Because a region may be implemented using bounding boxes,
+	//. transformations are not necessarily invertible.  That is,
+	//. transforming a region first by a matrix and then by
+	//. the inverse of the matrix may yield a larger (but not smaller)
+	//. region that the original.
+
+    //- bounds, origin, span
+    void bounds(out Vertex lower, out Vertex upper);
+    void origin(out Vertex v);
+    void span(in Axis a, out Region::BoundingSpan s);
+	//. Return information about the region.  The bounds operation
+	//. returns two vertices that contain the lower and upper
+	//. coordinate values, respectively.  The origin operation
+	//. returns the region's origin.  The span operation returns
+	//. the span along a particular axis.
+};
+
+//- StyleValue
+interface StyleValue : FrescoObject {
+    //. An attribute is a (name,value) pair, where the value
+    //. may be written or read in one of several forms.  The value
+    //. access functions come in pairs, one to read the value and
+    //. one to write the value.  When an attribute is written,
+    //. it immediately notifies any observers.
+
+    //- name
+    CharString name();
+	//. Return the attribute's name.  Because the name cannot
+	//. be changed, this operation can be called without
+	//. locking the attribute.
+
+    //- uninitialized
+    boolean uninitialized();
+	//. Return whether the attribute value has been defined yet
+	//. or not.  This test allows attribute update based
+	//. on priority to handle the case when the attribute
+	//. is first bound and the priority has not been set.
+
+    //- priority
+    attribute long priority;
+	//. An attribute priority is simply a hint to attribute
+	//. users as to whether they should override an already-defined
+	//. value.  The value is not used by the attribute in any
+	//. operations.  Typically, a style manager will check
+	//. the priority and only update the attribute's value
+	//. if the existing priority is lower than the priority
+	//. of the new value.  Setting an attribute's priority
+	//. does not cause it to notify its observers.
+
+    //- is_on
+    boolean is_on();
+	//. Return true if the value can be interpreted as a boolean;
+	//. that is if value is the string "on" or the string "true".
+	//. The string comparision is case-insensitive.
+
+    //- read_boolean, write_boolean
+    boolean read_boolean(out boolean b);
+    void write_boolean(in boolean b);
+	//. Interpret the value as a boolean that is true or false.
+	//. If the value is actually a string, this operation
+	//. returns true if the string is "on" or "true."  The string
+	//. comparison is case-insensitive.
+
+    //- read_coord, write_coord
+    boolean read_coord(out Coord c);
+    void write_coord(in Coord c);
+	//. If the value is a string, then interpret the string
+	//. as a real number (see the read_real operation)
+	//. followed by an optional unit specification. The remaining
+	//. of the string can be "in" for inches, "cm" for centimeters,
+	//. "mm" for millimeters, or "pt" for the width in points.
+	//. For example, the value "10mm" converts to 28.3.
+
+    //- read_integer, write_integer
+    boolean read_integer(out long i);
+    void write_integer(in long i);
+	//. Interpret the value as a 32-bit (optionally signed) integer.
+
+    //- read_real, write_real
+    boolean read_real(out double d);
+    void write_real(in double d);
+	//. If the value is a string, interpret the string as a
+	//. floating point number.  The number has an optional
+	//. leading plus or minus, zero or more digits to the
+	//. left and right of the decimal point (the point itself
+	//. is optional), and an optional exponent specification.
+
+    //- read_string, write_string
+    boolean read_string(out CharString s);
+    void write_string(in CharString s);
+	//. Interpret the attribute value as a string.
+
+    //- read_value, write_value
+    boolean read_value(out FrescoObject s);
+    void write_value(in FrescoObject s);
+	//. Interpret the attribute value in general as a reference
+	//. to an object.  Readers will typically need to try
+	//. to narrow the result to the type that they expect.
+
+    //- lock, unlock
+    void lock();
+    void unlock();
+	//. Acquire or release exclusive access to the attribute.
+	//. It is the responsibility of attribute clients to ensure
+	//. mutual exclusion during updates.
+};
+
+interface StyleVisitor;
+
+//- Style
+interface Style : FrescoObject {
+    //. A style is similar to an environment in a text formatting system
+    //. such as Scribe.  Styles may be nested hierarchically, and
+    //. attributes defined in an outer context are visible in an
+    //. inner context if not otherwise defined.  A style may have
+    //. a name, a list of aliases for wildcard-matching, a collection
+    //. of attributes (name-value pairs), a collection of nested styles,
+    //. and a parent style.
+    //.
+    //. Attribute names may contain "*" characters to specify
+    //. wildcard matching.  A name of the form A*B will match
+    //. an attribute B in a nested style named A.  Wildcard names
+    //. also may begin with a "*," which matches in any descendant style.
+    //. Thus, *A*B will match an attribute B in any descendant style
+    //. named A.  Because attributes are inherited, specifying
+    //. the wildcard name *B is identical to specifying the normal
+    //. attribute B.
+    //.
+    //. In addition to a name, styles may have a list of associated
+    //. aliases.  Wildcard matches search using a style's name first,
+    //. then search using the style's aliases in the reverse order
+    //. in which they are defined.  Aliases are typically used
+    //. for indicating a subtype relationship and allowing styles
+    //. to inherit attributes specified for a supertype.
+    //.
+    //. For example, suppose the root style defines the following
+    //. attributes:
+    //{
+    //..    *Mover*autorepeat: off
+    //..    *UpMover*autorepeat: on
+    //}
+    //. Consider descendant styles S and T: S's aliases are
+    //. UpMover and Mover; T's aliases are DownMover and Mover.
+    //. The name "autorepeat" will be resolved to the value "on"
+    //. for S and the value "off" for T.
+    //.
+    //. The wildcard matching algorithm is intended to be compatible
+    //. with the X resource manager (Xrm) and support the same user
+    //. customization functionality.  Wildcard attributes typically
+    //. are defined only on the root style, as loaded from the
+    //. window system, application defaults files, or command-line
+    //. arguments.
+
+    //- new_style
+    Style new_style();
+	//. Return a newly-created style.
+
+    //- parent
+    Style parent_style();
+	//. Return the style's parent style, if any.
+
+    //- link_parent, unlink_parent
+    void link_parent(in Style parent);
+    void unlink_parent();
+	//. The link_parent operation sets the parent of a style
+	//. for the purposes of inheriting attributes.
+	//. The unlink operation unsets the parent
+	//. so that attributes are no longer inherited.
+
+    //- link_child, unlink_child
+    Tag link_child(in Style child);
+    void unlink_child(in Tag link_tag);
+	//. The link_child operation adds the given style
+	//. to the list of nested styles of this style and
+	//. returns a tag to be passed when the child is to be
+	//. removed from the list.
+
+    //- merge
+    void merge(in Style s);
+	//. Copy all the attributes, aliases, and nested styles
+	//. in the given style into this style.
+
+    //- name
+    attribute CharString name;
+	//. The name attribute defines the style's name
+	//. for the purposes of wildcard matching.  In Xrm terms,
+	//. this attribute is the "instance name."
+
+    //- alias
+    void alias(in CharString s);
+	//. Add an alias to the list for the style.
+
+    //- is_on
+    boolean is_on(in CharString name);
+	//. Determine whether the given name is defined as an
+	//. attribute and whether the value is set to "on" or "true."
+	//. This operation is short-hand for resolving the name
+	//. to an attribute and calling StyleValue::is_on on the result.
+
+    //- bind
+    StyleValue bind(in CharString name);
+	//. If the given name is already defined in this style,
+	//. then return the associated attribute.  Otherwise,
+	//. create and return a new attribute in the style.
+	//. The priority of the new attribute will be initialized to zero.
+
+    //- unbind
+    void unbind(in CharString name);
+	//. Remove the attribute with the given name, if any is defined
+	//. on this style.
+
+    //- resolve
+    StyleValue resolve(in CharString name);
+	//. Search for an attribute with the given name
+	//. (including inherited attributes), returning
+	//. the associated attribute if found or
+	//. nil otherwise.  This operation also searches
+	//. wildcard attributes using the name and alias of this style and,
+	//. in the case of inherited attributes, the names and aliases
+	//. of all the styles between this style and the style
+	//. where the inherited attribute is defined.
+
+    //- resolve_wildcard
+    StyleValue resolve_wildcard(in CharString name, in Style start);
+	//. Look for a wildcard match in this style,
+	//. using the given style as the starting point
+	//. for name and alias comparisons.  This operation
+	//. is primarily for the style implementation
+	//. to search its ancestors; application objects
+	//. usually need not call this operation directly.
+
+    //- match
+    long match(in CharString name);
+	//. Check to see if a given name matches the style's name
+	//. or any of its aliases.  This operation returns zero
+	//. if there is no match, one if the name matches, or
+	//. two plus the alias number in the case of an alias match.
+	//. A smaller index value indicates a "closer" match
+	//. if the aliases represent an ancestry of superclasses.
+
+    //- visit_aliases, visit_attributes, visit_styles
+    void visit_aliases(in StyleVisitor v);
+    void visit_attributes(in StyleVisitor v);
+    void visit_styles(in StyleVisitor v);
+	//. These operations iterate through the aliases,
+	//. attributes, and nested styles in this style.
+
+    //- lock, unlock
+    void lock();
+    void unlock();
+	//. The lock operation acquires exclusive access
+	//. to the style until a subsequent call to unlock.
+};
+
+//- StyleVisitor
+interface StyleVisitor : FrescoObject {
+    //. A style visitor is essentially a callback for iterating
+    //. over the elements of a style.  The visitor can be used
+    //. to access the aliases, attributes, and style children
+    //. of a particular style.
+
+    //- visit_alias, visit_attribute, visit_style
+    boolean visit_alias(in CharString name);
+    boolean visit_attribute(in StyleValue a);
+    boolean visit_style(in Style s);
+	//. Each of the visit operations
+	//. returns a boolean value indicating whether the iteration
+	//. should continue or not.
+};
+
+//- Transform
+interface Transform : FrescoObject {
+    //. A transform represents a (logically) 4x4 matrix for use
+    //. in translating coordinates.  A 2-dimensional implementation
+    //. may store and manipulate a 3x2 matrix rather than
+    //. a full 4x4 matrix.
+
+    //- Matrix
+    typedef Coord Matrix[4][4];
+	//. The Matrix type defines the data that may be contained
+	//. in a transform.
+
+    //- load
+    void load(in Transform t);
+	//. Copy the matrix data from the given transform.
+
+    //- load_identity
+    void load_identity();
+	//. Set this transform's matrix to the identity matrix.
+
+    //- load_matrix
+    void load_matrix(in Matrix m);
+	//. Copy the given matrix data into this transform.
+
+    //- store_matrix
+    void store_matrix(out Matrix m);
+	//. Store this transform's matrix to the given matrix data.
+
+    //- equal, identity, det_is_zero
+    boolean equal(in Transform t);
+    boolean identity();
+    boolean det_is_zero();
+	//. The equal operation tests if a transformation matrix
+	//. is the same as a given transform within
+	//. a standard coordinate tolerance.  The identity operation
+	//. tests if the matrix is equal to an identity matrix
+	//. (also with the standard tolerance).  The det_is_zero
+	//. operation tests if the determinant of the matrix
+	//. is zero within the standard tolerance.
+
+    //- scale, rotate, translate
+    void scale(in Vertex v);
+    void rotate(in float angle, in Axis a);
+    void translate(in Vertex v);
+	//. Modify the matrix to perform coordinate scaling,
+	//. rotation, and translation.  The rotation angle
+	//. is given in degrees.  A 2-dimensional implementation
+	//. only implements rotate about the z-axis.
+
+    //- premultiply, postmultiply
+    void premultiply(in Transform t);
+    void postmultiply(in Transform t);
+	//. These operations set the matrix to be the result of
+	//. multiplying the matrix and the given transform.
+	//. Two operations are necessary because matrix multiplication
+	//. is not necessarily communative.  Premultiply means
+	//. the current matrix is on the left-hand side of the
+	//. multiplication, postmultiply means the current matrix
+	//. is on the right.
+
+    //- invert
+    void invert();
+	//. Set the matrix to its inverse.
+
+    //- transform_vertex, inverse_transform_vertex
+    void transform_vertex(inout Vertex v);
+    void inverse_transform_vertex(inout Vertex v);
+	//. Multiply the given vertex by the transformation matrix
+	//. to compute transformed or inverse-transformed coordinates.
+};
+
+#endif

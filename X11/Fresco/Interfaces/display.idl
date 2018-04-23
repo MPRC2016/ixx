@@ -1,0 +1,445 @@
+/*
+ * Copyright (c) 1992-1993 Silicon Graphics, Inc.
+ * Copyright (c) 1993 Fujitsu, Ltd.
+ *
+ * Permission to use, copy, modify, distribute, and sell this software and 
+ * its documentation for any purpose is hereby granted without fee, provided
+ * that (i) the above copyright notices and this permission notice appear in
+ * all copies of the software and related documentation, and (ii) the names of
+ * Silicon Graphics and Fujitsu may not be used in any advertising or
+ * publicity relating to the software without the specific, prior written
+ * permission of Silicon Graphics and Fujitsu.
+ *
+ * THE SOFTWARE IS PROVIDED "AS-IS" AND WITHOUT WARRANTY OF ANY KIND, 
+ * EXPRESS, IMPLIED OR OTHERWISE, INCLUDING WITHOUT LIMITATION, ANY 
+ * WARRANTY OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.  
+ *
+ * IN NO EVENT SHALL SILICON GRAPHICS OR FUJITSU BE LIABLE FOR
+ * ANY SPECIAL, INCIDENTAL, INDIRECT OR CONSEQUENTIAL DAMAGES OF ANY KIND,
+ * OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+ * WHETHER OR NOT ADVISED OF THE POSSIBILITY OF DAMAGE, AND ON ANY THEORY OF 
+ * LIABILITY, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE 
+ * OF THIS SOFTWARE.
+ */
+
+#ifndef Fresco_display_idl
+#define Fresco_display_idl
+
+#include <X11/Fresco/Interfaces/drawing.idl>
+
+interface Color;
+interface Event;
+interface Font;
+interface GlyphTraversal;
+interface Raster;
+interface Screen;
+interface Viewer;
+interface Window;
+interface WindowStyle;
+
+//- Cursor
+interface Cursor : FrescoObject {
+    //. A cursor is an image that tracks a pointing device's position.
+    //. Cursors may be defined by two bitmaps and a "hot spot."
+    //. The mask bitmap specifies which pixels are to be drawn,
+    //. and the pattern bitmap specifies which pixels are in foreground
+    //. color and which are in background color.  The hot spot
+    //. specifies the location of the pointing device relative
+    //. to the cursor's lower-left corner.
+};
+
+//- Display
+interface Display : FrescoObject {
+    //. A display is the unit of window system control; typically it
+    //. consists of a single screen, keyboard, and a mouse or other
+    //. pointing device.  Application objects typically need not
+    //. perform operations directly on a display.
+
+    //- ScreenNumber
+    typedef long ScreenNumber;
+	//. The ScreenNumber type defines the representation of
+	//. screen numbers.
+
+    //- display_style
+    Style display_style();
+	//. Return the style associated with a display.
+
+    //- drawing_kit
+    DrawingKit drawing_kit();
+	//. In addition to screen access and update, a display
+	//. provides a name service for drawing objects such as
+	//. colors and fonts.  The drawing_kit operation on a display
+	//. returns a drawing kit that provides this service.
+
+    //- display_screen, number_of_screens, default_screen
+    Screen display_screen(in Display::ScreenNumber n);
+    Display::ScreenNumber number_of_screens();
+    Screen default_screen();
+	//. For displays with multiple screens, the screen
+	//. operation returns the screen object corresponding
+	//. to the given index.  The number_of_screens returns
+	//. the total number of screens the display has;
+	//. a screen number should be between zero and
+	//. the number of screens minus one.  The default_screen
+	//. operation returns the default screen as defined
+	//. by the display.
+
+    //- cursor_from_data, cursor_from_bitmap
+    //- cursor_from_font, cursor_from_index
+    Cursor cursor_from_data(
+	in short x, in short y, in long pat[16], in long mask[16]
+    );
+    Cursor cursor_from_bitmap(in Raster b, in Raster mask);
+    Cursor cursor_from_font(in Font f, in long pat, in long mask);
+    Cursor cursor_from_index(in long n);
+	//. These operations return cursors that can be used
+	//. on windows on the display.
+
+    //- run, running
+    void run(in boolean b);
+    boolean running();
+	//. Given a value of true as its parameter, the run operation
+	//. executes a main loop that reads and dispatches input events,
+	//. terminating when the run operation is called with a value
+	//. of false.  The run operation is also responsible
+	//. for handling screen update, though redisplay will
+	//. typically be handled by a separate thread.  The running
+	//. operation returns the current state of the loop.
+
+    //- add_filter*, remove_filter*
+    Tag add_filter(in GlyphTraversal t);
+    void remove_filter(in Tag add_tag);
+	//. The add_filter operation requests that all events
+	//. be passed to the current viewer of the given traversal
+	//. before processing them further, even if the event
+	//. would normally be delivered to a different viewer.
+	//. If the viewer's handle operation returns true,
+	//. then no other processing will occur.  Otherwise,
+	//. the event will be handled as if the filter
+	//. were not present.  If several filters are defined,
+	//. they will be queried in the reverse order in which
+	//. they are defined.  To stop filtering, the tag returned
+	//. by add_filter should be passed to the remove_filter operation.
+
+    //- need_repair
+    void need_repair(in Window w);
+	//. Notify the display that the given window has been damaged
+	//. and should be repaired the next time the display is repaired.
+	//. If called during event processing, the need_repair
+	//. operation will put the window on a list to be repaired
+	//. before blocking for input.  Otherwise, if need_repair
+	//. is called asynchronously while the input thread is blocked,
+	//. then the display will be repaired immediately.
+
+    //- repair
+    void repair();
+	//. Repair all damaged windows on all screens on the display.
+	//. This operation usually need not be called directly
+	//. from application objects.  Incurring or extending damage
+	//. is normally sufficient to cause a repair to happen
+	//. in the near future.
+
+    //- flush, flush_and_wait
+    void flush();
+    void flush_and_wait();
+	//. Repair all damaged windows on the display and ensure that
+	//. any pending requests have been sent to the window system.
+	//. The flush_and_wait operation additionally waits for
+	//. an acknowledgment from the window system indicating
+	//. that the request have been processed.
+
+    //- ring_bell
+    void ring_bell(in float pct_loudness);
+	//. Sound the system bell.  The parameter specifies the volume
+	//. as a fraction of the possible loudness.  For example,
+	//. a value of 0.75 specifies a volume that is three-quarters
+	//. as loud as possible.  If the value is not positive, no sound
+	//. is made.  If the parameter value is greater than or equal
+	//. to one, then the volume is as loud as possible.
+
+    //- close
+    void close();
+	//. Terminate the connection to the display.  Once a connection
+	//. is closed, it cannot be re-opened.
+
+    //- auto_repeat
+    attribute boolean auto_repeat;
+	//. If the value of this attribute is true, then the display's
+	//. keyboard will auto-repeat keys that are depressed.
+
+    //- key_click_volume
+    attribute float key_click_volume;
+	//. The key click volume is specified as a fraction of the
+	//. possible loudness.  For example, a value of 0.75 specifies
+	//. a volume that is three-quarters as loud as is possible.
+	//. If the value is not positive, no sound will be made.
+	//. If the value is greater than or equal to one, then
+	//. the volume will be as loud as possible.
+
+    //- pointer_acceleration, pointer_threshold
+    attribute float pointer_acceleration;
+    attribute long pointer_threshold;
+	//. These two attributes control the pointer responsiveness.
+	//. Pointer movement will be multiplied by the acceleration
+	//. when it moves more than the number of pixels specified
+	//. by the threshold.
+
+    //- pointer_double_click_time
+    attribute float pointer_double_click_threshold;
+	//. This attribute holds time difference, in seconds,
+	//. between two clicks below which the second click
+	//. may be interpreted as a double click event.
+	//. The default value is 250 milliseconds.
+};
+
+//- Screen
+interface Screen : FrescoObject {
+    //. A screen represents a physical array of pixels.
+
+    //- dpi
+    attribute Coord dpi;
+	//. This attribute contains the resolution, or "dots-per-inch"
+	//. (dpi) of the screen.  Initially, the value is the hardware
+	//. resolution.  It can be changed to a different value for use
+	//. in the conversion to and from pixel coordinates.
+
+    //- display
+    Display screen_display();
+	//. Return the display that contains the screen.
+
+    //- width, height
+    Coord width();
+    Coord height();
+	//. Return the screen dimensions in resolution-independent
+	//. coordinates.
+
+    //- to_pixels, to_coord, to_pixels_coord
+    PixelCoord to_pixels(in Coord c);
+    Coord to_coord(in PixelCoord p);
+    Coord to_pixels_coord(in Coord c);
+	//. These operations convert coordinates between points and
+	//. pixels using the screen's resolution.  The to_pixels_coord
+	//. operation is equivalent to calling to_coord(to_pixels(c)),
+	//. which effectively rounds the coordinate out to the nearest
+	//. pixel boundary.
+
+    //- move_pointer
+    void move_pointer(in Coord x, in Coord y);
+	//. Change the current position of the input pointer to the
+	//. given position relative to the root window of the screen.
+	//. This operation can surprise users and generally
+	//. should be avoided.
+
+    //- application*
+    Window application(in Viewer v);
+	//. Create a new application window for the given viewer.
+	//. An application should create a single application window,
+	//. which may make information about command-line arguments
+	//. available to a session manager.
+
+    //- top_level*
+    Window top_level(in Viewer v, in Window group_leader);
+	//. Create a new top-level window for the given viewer.
+	//. A top-level window can have a "group leader," which is
+	//. typically an application window.  A window manager
+	//. might allow quick control of all windows with the
+	//. same group leader, such as when iconifying or deiconifying.
+
+    //- transient*
+    Window transient(in Viewer v, in Window transient_for);
+	//. Create a new transient window for the given viewer.
+	//. A transient window is often treated specially by
+	//. window mangers.  It may be decorated differently
+	//. (or not at all), or automatically unmapped when the
+	//. main window is iconified.  Transient windows are used
+	//. for temporary controls, such as dialog boxes,
+	//. but not for unmanaged windows such as popups or pulldowns.
+	//. A transient is usually associated with another managed window.
+
+    //- popup*
+    Window popup(in Viewer v);
+	//. Create a new popup window for the given viewer.
+	//. A popup window is unmapped directly to a screen without
+	//. window manager interaction (or knowledge).  In the X
+	//. window system, a popup window will override the normal
+	//. redirection of map requests to window managers.  Popups
+	//. on X also will request that the pixels under the popup
+	//. be saved to avoid a subsequent exposure when the popup
+	//. is unmapped.  Popups should only be used for temporary
+	//. windows, such as popup or pulldown menus.  Because they
+	//. do not go through the window manager, popups must be
+	//. placed explicitly.
+
+    //- icon*
+    Window icon(in Viewer v);
+	//. Create a new icon window for the given viewer.
+};
+
+//- Window
+interface Window : FrescoObject {
+    //. A window is supported by the underlying window system and
+    //. can be manipulated by the user through a (possibly-separate)
+    //. window manager.
+
+    //- Placement
+    struct Placement {
+	Coord x, y, width, height;
+	Alignment align_x, align_y;
+    };
+	//. The placement type describes a window position.
+	//. The x and y fields specify the screen position
+	//. for the window.  The align_x and align_y fields are
+	//. fractions that indicate where the window should appear
+	//. relative to the x and y coordinates.  For example,
+	//. an alignment of 0.0,1.0 means the position specifies
+	//. the upper-left corner of the window.  An alignment
+	//. of 0.5,0.5 means the coordinates specify the center
+	//. of the window.  Unless specified, the alignment will
+	//. be 0.0,0.0, meaning the coordinates specify the lower-left
+	//. corner of the window.
+
+    //- double_buffered
+    attribute boolean double_buffered;
+	//. This attribute determines whether drawing to a window is
+	//. double-buffered or not.
+
+    //- default_cursor, cursor_foreground, cursor_background
+    attribute Cursor default_cursor;
+    attribute Color cursor_foreground;
+    attribute Color cursor_background;
+	//. These attributes define the default cursor and cursor colors
+	//. to use when the pointer is inside the window.
+
+    //- geometry
+    attribute CharString geometry;
+	//. Geometry specifications are strings of the form "WxH+X+Y"
+	//. where W is the width, H the height, X the left corner, and
+	//. Y the top corner of the window.  Either the position
+	//. or the size may be omitted, and the position can use "-"
+	//. instead of "+" to denote a distance from the opposite
+	//. side of the screen to the opposite side of the window.
+	//. For example, a -X value specifies the right side of the
+	//. window should be a distance X from the right edge
+	//. of the screen.
+
+    //- icon, iconic
+    attribute Window icon;
+    attribute boolean iconic;
+	//. If the icon attribute is specified then
+	//. a window manager will normally map the icon window
+	//. when this window is unmapped.  If the iconic flag
+	//. is true, then calling Window::map will actually map
+	//. its icon window instead.
+
+    //- title
+    attribute CharString title;
+	//. This attribute defines a string that may be used
+	//. by a window manager in a title bar above a window.
+
+    //- xor_pixel
+    attribute long xor_pixel;
+	//. This attribute defines the pixel value to use when
+	//. performing xor drawing operations.  Using xor on
+	//. a color display is problematic and should generally
+	//. be avoided.
+
+    //- window_screen
+    Screen window_screen();
+	//. Return the screen with which the window is associated.
+
+    //- window_style
+    Style window_style();
+	//. Return the style for the window.
+
+    //- main_viewer*
+    Viewer main_viewer();
+	//. Return the top-level viewer inside the window.
+
+    //- configure, get_configuration
+    void configure(in Window::Placement p);
+    void get_configuration(in boolean position, out Window::Placement p);
+	//. The configure operation sets the desired placement
+	//. for a window, the get_configuration operation returns
+	//. the actual placement.  If the position flag is true,
+	//. then get_configuration will retrieve both the size and position
+	//. of the window; otherwise, only the size fields of the
+	//. placement structure will be set.
+
+    //- configure_notify, move_notify
+    void configure_notify(in Coord width, in Coord height);
+    void move_notify(in Coord left, in Coord bottom);
+	//. Notify the window that its size or position has changed.
+	//. These operations are intended for use by the display object
+	//. in response to events generated by window management, and
+	//. need not be called directly by applications.
+
+    //- map, unmap, is_mapped
+    void map();
+    void unmap();
+    boolean is_mapped();
+	//. The map operation requests that the window be mapped
+	//. onto its screen and become visible.  The unmap operations
+	//. requests the window be unmapped and no longer be visible.
+	//. The is_mapped operation returns whether the window
+	//. is currently mapped.  Because the map and unmap operations
+	//. may be asynchronous, one cannot assume that a window
+	//. will be mapped or unmapped immediately after the
+	//. corresponding call.
+
+    //- map_notify, unmap_notify
+    void map_notify();
+    void unmap_notify();
+	//. Notify a window that is has been mapped or unmapped.
+	//. These operations are intended for use by the display object
+	//. in response to events generated by window management, and
+	//. need not be called directly by applications.
+
+    //- iconify*, deiconify*
+    void iconify();
+    void deiconify();
+	//. These operations request that a window be iconified
+	//. (sometimes also known as "minimized") or deiconified.
+
+    //- raise, lower
+    void raise();
+    void lower();
+	//. These operations request a change in the stacking order
+	//. of this window with respect to other windows.
+	//. The raise operation asks that this window be the highest
+	//. of all windows at the same level; the lower operation
+	//. asks to be the lowest.
+
+    //- redraw
+    void redraw(
+	in Coord left, in Coord bottom, in Coord width, in Coord height
+    );
+	//. Damage a rectangular region of a window.  This operation
+	//. is intended for use by the display object in response
+	//. to exposure events.  Application objects should perform
+	//. operations on a traversal's damage object rather than
+	//. calling redraw directly.
+
+    //- repair
+    void repair();
+	//. Perform a draw traversal in the window beginning with
+	//. the main viewer.  This operation is normally called
+	//. by the display object and need not be called from
+	//. an application.
+
+    //- handle_event*
+    void handle_event(in Event e);
+	//. Respond to an event.  A window typically will simply pass
+	//. these operations on to the main viewer.  This operation
+	//. is normally called by a display object and need not
+	//. be called directly from an application.
+
+    //- grab_pointer, ungrab_pointer
+    void grab_pointer(in Cursor c);
+    void ungrab_pointer();
+	//. The grab_pointer operation takes control of input events
+	//. for the entire display until a subsequent call to
+	//. ungrab_pointer.  The cursor parameter, unless nil,
+	//. is used during the grab when the pointer is outside the window.
+};
+
+#endif

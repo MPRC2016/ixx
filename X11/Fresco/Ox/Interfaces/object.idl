@@ -1,0 +1,212 @@
+/*
+ * Copyright (c) 1987-91 Stanford University
+ * Copyright (c) 1991-93 Silicon Graphics, Inc.
+ * Copyright (c) 1993 Fujitsu, Ltd.
+ *
+ * Permission to use, copy, modify, distribute, and sell this software and 
+ * its documentation for any purpose is hereby granted without fee, provided
+ * that (i) the above copyright notices and this permission notice appear in
+ * all copies of the software and related documentation, and (ii) the names of
+ * Stanford, Silicon Graphics, and Fujitsu may not be used in any advertising or
+ * publicity relating to the software without the specific, prior written
+ * permission of Stanford, Silicon Graphics, and Fujitsu.
+ *
+ * THE SOFTWARE IS PROVIDED "AS-IS" AND WITHOUT WARRANTY OF ANY KIND, 
+ * EXPRESS, IMPLIED OR OTHERWISE, INCLUDING WITHOUT LIMITATION, ANY 
+ * WARRANTY OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.  
+ *
+ * IN NO EVENT SHALL STANFORD, SILICON GRAPHICS, OR FUJITSU BE LIABLE FOR
+ * ANY SPECIAL, INCIDENTAL, INDIRECT OR CONSEQUENTIAL DAMAGES OF ANY KIND,
+ * OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+ * WHETHER OR NOT ADVISED OF THE POSSIBILITY OF DAMAGE, AND ON ANY THEORY OF 
+ * LIABILITY, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE 
+ * OF THIS SOFTWARE.
+ */
+
+#ifndef object_idl
+#define object_idl
+
+//- TypeObj
+interface TypeObj {
+    //. TypeObj represents the type of an object.
+
+    //- ParamMode
+    enum ParamMode { param_in, param_out, param_inout };
+	//. ParamMode is an enumeration for the various
+	//. parameter passing modes.
+
+    //- ParamInfo
+    struct ParamInfo {
+	string param_name;
+	ParamMode param_mode;
+	TypeObj param_type;
+    };
+	//. This structure contains information about
+	//. a particular parameter.
+
+    //- OpInfo
+    struct OpInfo {
+	string op_name;
+	long op_index;
+	TypeObj op_result;
+	sequence<ParamInfo> op_params;
+    };
+	//. This structure contains information about
+	//. an operation or attribute.
+
+    //- KindOf
+    enum KindOf {
+	void_type, boolean_type, char_type, octet_type,
+	short_type, unsigned_short_type, long_type, unsigned_long_type,
+	longlong_type, unsigned_longlong_type,
+	float_type, double_type, string_type,
+	enum_type, array_type, struct_type, sequence_type,
+	interface_type, typedef_type
+    };
+	//. KindOf is a enumeration of the different categories of
+	//. type objects.
+
+    //- name
+    string name();
+	//. Return the name of the type.  The name is as defined
+	//. in the source, not qualified by any containing scopes.
+
+    //- op_info
+    boolean op_info(out TypeObj::OpInfo op, in long n);
+	//. Retrieve the information about the operation referred
+	//. to by the given index, if any.  This operation returns
+	//. true if the index is valid.
+
+    //- kind
+    KindOf kind();
+	//. Return the kind of this type.
+
+    //- enum_info
+    long enum_info();
+	//. Return the maximum value for an enumeration constant.
+
+    //- array_info
+    void array_info(out TypeObj type, out long size);
+	//. Return the information about an array type.
+
+    //- members
+    long members();
+	//. Return the number of members in a structure.
+
+    //- member_info
+    TypeObj member_info(in long n);
+	//. Return the type of the member identified by the given index.
+
+    //- sequence_info
+    void sequence_info(out TypeObj type, out long size);
+	//. Return the information about a sequence type.
+
+    //- typedef_info
+    TypeObj typedef_info();
+	//. Return the type to which a typedef refers.
+};
+
+//- RequestObj
+interface RequestObj {
+    //. A request object is used to perform dynamic invocation
+    //. of operations on objects.  These objects are useful
+    //. for script or other kinds of interpreters.
+
+    //- CallStatus
+    enum CallStatus {
+	initial, ok,
+	unknown_operation, ambiguous_operation,
+	bad_argument_count, bad_argument_type,
+	invoke_failed
+    };
+	//. This type defines the possible return status values
+	//. for a call.
+
+    //- set_operation
+    void set_operation(in string s);
+	//. Specify the operation for which this request is intended.
+
+    //- invoke
+    CallStatus invoke();
+	//. Call the operation on the object.
+
+    //- op_info
+    CallStatus op_info(out TypeObj::OpInfo op);
+	//. Retrieve the information of the operation associated
+	//. with the request, if any.  The return value is true
+	//. if the request corresponds to a valid operation.
+
+    //- put_char, get_char
+    void put_char(in char value);
+    char get_char();
+	//. Put or get a character into or from the
+	//. request's parameter list.
+
+    //- put_boolean, get_boolean
+    void put_boolean(in boolean value);
+    boolean get_boolean();
+	//. Put or get a boolean value into or from the
+	//. request's parameter list.
+
+    //- put_octet, get_octet
+    void put_octet(in octet value);
+    octet get_octet();
+	//. Put or get an octet into or from the
+	//. request's parameter list.
+
+    //- put_short, get_short
+    void put_short(in short value);
+    short get_short();
+	//. Put or get a short integer into or from the
+	//. request's parameter list.
+
+    //- put_unsigned_short, get_unsigned_short
+    void put_unsigned_short(in unsigned short value);
+    unsigned short get_unsigned_short();
+	//. Put or get an unsigned short integer into or from the
+	//. request's parameter list.
+
+    //- put_long, get_long
+    void put_long(in long value);
+    long get_long();
+	//. Put or get a long integer into or from the
+	//. request's parameter list.
+
+    //- put_unsigned_long, get_unsigned_long
+    void put_unsigned_long(in unsigned long value);
+    unsigned long get_unsigned_long();
+	//. Put or get an unsigned long integer into or from the
+	//. request's parameter list.
+
+    //- put_float, get_float
+    void put_float(in float value);
+    float get_float();
+	//. Put or get a single precision floating point value into or
+	//. from the request's parameter list.
+
+    //- put_double, get_double
+    void put_double(in double value);
+    double get_double();
+	//. Put or get a double precision floating point value into or
+	//. from the request's parameter list.
+
+    //- put_string, get_string
+    void put_string(in string value);
+    string get_string();
+	//. Put or get a string into or from the
+	//. request's parameter list.
+
+    //- put_object, get_object
+    void put_object(in BaseObject obj);
+    BaseObject get_object();
+	//. Put or get an object reference into or from the
+	//. request's parameter list.
+
+    //- begin_aggregate, end_aggregate
+    void begin_aggregate();
+    void end_aggregate();
+	//. These operations bracket a set of values for
+	//. an aggregate parameter.
+};
+
+#endif

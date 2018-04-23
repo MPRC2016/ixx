@@ -1,0 +1,333 @@
+/*
+ * Copyright (c) 1991 Stanford University
+ * Copyright (c) 1991-93 Silicon Graphics, Inc.
+ * Copyright (c) 1993 Fujitsu, Ltd.
+ *
+ * Permission to use, copy, modify, distribute, and sell this software and 
+ * its documentation for any purpose is hereby granted without fee, provided
+ * that (i) the above copyright notices and this permission notice appear in
+ * all copies of the software and related documentation, and (ii) the names
+ * of Stanford, Silicon Graphics, and Fujitsu may not be used in any
+ * advertising or publicity relating to the software without the specific,
+ * prior written permission of Stanford, Silicon Graphics, and Fujitsu.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS-IS" AND WITHOUT WARRANTY OF ANY KIND, 
+ * EXPRESS, IMPLIED OR OTHERWISE, INCLUDING WITHOUT LIMITATION, ANY 
+ * WARRANTY OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.  
+ *
+ * IN NO EVENT SHALL STANFORD OR SILICON GRAPHICS BE LIABLE FOR
+ * ANY SPECIAL, INCIDENTAL, INDIRECT OR CONSEQUENTIAL DAMAGES OF ANY KIND,
+ * OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+ * WHETHER OR NOT ADVISED OF THE POSSIBILITY OF DAMAGE, AND ON ANY THEORY OF 
+ * LIABILITY, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE 
+ * OF THIS SOFTWARE.
+ */
+
+#ifndef Fresco_widgets_idl
+#define Fresco_widgets_idl
+
+#include <X11/Fresco/Interfaces/viewer.idl>
+
+//- Adjustment*
+interface Adjustment : FrescoObject {
+    //. An adjustment is two segments that represent the possible and
+    //. current range of values for a bounded value, such as would
+    //. be used for scrolling.
+
+    //- Settings
+    struct Settings {
+	Coord lower, upper, length;
+	Coord cur_lower, cur_upper, cur_length;
+    };
+	//. The Settings structure defines the two ranges for
+	//. an adjustment.  The lower, upper, and length fields
+	//. define the possible range of values; cur_lower,
+	//. cur_upper, and define a current range.  Providing
+	//. both bounds and length is redundant information
+	//. (since length is always equal to upper minus lower),
+	//. but is more convenient than picking one representation
+	//. over the other.
+
+    //- small_scroll, large_scroll
+    attribute Coord small_scroll;
+    attribute Coord large_scroll;
+	//. When used for scrolling, an adjustment provides
+	//. attributes that define the size of movement
+	//. for the scroll_forward, scroll_backward,
+	//. page_forward, and page_backward operations.
+	//. The small_scroll attribute is for use by the scroll operations;
+	//. large_scroll for use by the page operations.
+
+    //- get_settings
+    void get_settings(out Adjustment::Settings s);
+	//. Retrieve the current settings of the adjustment.
+
+    //- begin, commit, cancel
+    void begin();
+    void commit();
+    void cancel();
+	//. These operations control when adjustment changes take effect.
+	//. Operations to change the settings between a call to begin and
+	//. commit will be treated as a single transaction in that
+	//. the adjustment will be locked and no updates will be sent
+	//. to any observers until the call to commit.  The cancel
+	//. operations stops the transaction and returns the settings
+	//. to their value before the previous call to begin.
+
+    //- scroll_forward, scroll_backward
+    //- page_forward, page_backward
+    void scroll_forward();
+    void scroll_backward();
+    void page_forward();
+    void page_backward();
+	//. Request that the adjustment change its current lower
+	//. position setting.  The scroll operations ask to move
+	//. the position by the amount determined by the small_scroll
+	//. attribute; the page operations by the large_scroll amount.
+	//. The forward operations add the amount; the backward operations
+	//. subtract the amount.
+
+    //- scroll_to
+    void scroll_to(in Coord lower);
+	//. Request that the adjustment change its lower position
+	//. to the given coordinate.
+
+    //- scroll_by
+    void scroll_by(in Coord delta);
+	//. Request that the adjustment change its lower position
+	//. to add the given delta (which may be negative).
+
+    //- scale_to
+    void scale_to(in Coord length);
+	//. Request that the adjustment change its current length,
+	//. effectively scaling the adjustment so that it covers
+	//. more or less of the total segment.
+
+    //- constrain
+    void constrain(inout Coord c);
+	//. Modify the given coordinate if necessary to keep
+	//. it within the adjustment's settings.  If the given
+	//. value is below the adjustment's lower bound, then
+	//. set it to the lower bound.  If the given value
+	//. plus the current length is large than the adjustment's
+	//. upper bound, then set it to be the upper bound minus
+	//. the current length.
+};
+
+interface Telltale;
+
+//- Button*
+interface Button : Viewer {
+    //. A button is a viewer that can perform an action when clicked
+    //. (pressed and subsequently released with the pointer over
+    //. the button's allocated area).  Buttons manipulate a telltale
+    //. that represents the current state of the button and
+    //. determines the button's appearance.
+
+    //- state
+    attribute Telltale state;
+	//. The button's state may affect the appearance of the button.
+	//. If the state's enabled flag is on, then the button
+	//. will change the state in response to input events.
+
+    //- click_action
+    attribute Action click_action;
+	//. The button will execute its action (if not nil) when clicked.
+};
+
+//- Telltale*
+interface Telltale : FrescoObject {
+    //. A telltale reflects the current state of a button
+    //. in terms of a set of flags that are on or off.
+    //. A telltale may also belong to a telltale group,
+    //. which can ensure that only one telltale in the group
+    //. has the chosen flag on.
+
+    //- Flag
+    enum Flag {
+	enabled, visible, active, chosen, running, stepping,
+	choosable, toggle
+    };
+	//. The telltale flags represent different states
+	//. associated with a button.  The enabled flag
+	//. is on when the button is handling input.
+	//. The visible flag is on when the pointer is inside
+	//. the button's output area.  The active flag is on
+	//. between the time the button receives a down event and
+	//. when the corresponding up event occurs.  The chosen flag
+	//. indicates the button is currently selected, a state
+	//. normally associated with radio buttons or check boxes.
+	//. The running flag is on while the button is executing
+	//. its action.  The stepping flag is on while the button
+	//. is autorepeating (if the button supports autorepeat).
+	//. The choosable flag indicates whether the button can be
+	//. set to chosen or not.  Push buttons are normally
+	//. not choosable because a chosen button will not execute
+	//. its action when clicked.  The toggle flag indicates the
+	//. state should flip between chosen and not chosen when
+	//. clicked.
+
+    //- set
+    void set(in Telltale::Flag f);
+	//. Turn on the given flag.
+
+    //- clear
+    void clear(in Telltale::Flag f);
+	//. Turn off the given flag.
+
+    //- test
+    boolean test(in Telltale::Flag f);
+	//. Return true if given flag is currently on.
+
+    //- current
+    attribute Telltale current;
+	//. The current attribute is by default a nil reference.
+	//. This attribute is intended to support radio buttons or
+	//. other mutually-exclusive choice settings.
+	//.
+	//. If set, then current attribute refers to a "group" telltale
+	//. that contains a currently-chosen telltale in the group's
+	//. current attribute.  When a telltale's chosen flag is changed
+	//. from clear to set and its current attribute is not nil,
+	//. the current attribute refers to a group telltale.
+	//. The group's current attribute refers to the previously-chosen
+	//. telltale, which will have its chosen flag cleared.
+	//. Then the group's current attribute will be changed
+	//. to refer to the newly-chosen telltale.
+};
+
+interface Menu;
+
+interface MenuItem : Button {
+    attribute Menu submenu;
+
+    MenuItem next_menu();
+    MenuItem prev_menu();
+    void insert_menu_before(in MenuItem i);
+    void insert_menu_after(in MenuItem i);
+    void replace_menu(in MenuItem i);
+    void remove_menu();
+};
+
+interface Menu : Viewer {
+    void append_menu_item(in MenuItem i);
+    void prepend_menu_item(in MenuItem i);
+    MenuItem first_menu_item();
+    MenuItem last_menu_item();
+
+    attribute MenuItem selected;
+};
+
+/*
+ * WidgetKit -- create common widgets
+ */
+
+//- WidgetKit*
+interface WidgetKit : FrescoObject {
+    //. WidgetKit provides operations for creating common types
+    //. of buttons, menus, and scrolling objects, as well as
+    //. styled frames and labels.
+
+    //- inset_frame, outset_frame, bright_inset_frame
+    Glyph inset_frame(in Glyph g);
+    Glyph outset_frame(in Glyph g);
+    Glyph bright_inset_frame(in Glyph g);
+	//. These operations provide a beveled frame around the given glyph.
+	//. The inset_frame operation uses dark shading in the upper left
+	//. and light shading in the lower right to make the contents
+	//. of the frame appear to be recessed.  The outset_frame operation
+	//. reverses the shading to make the contents appear to project
+	//. out of the frame.  The bright_inset_frame operation is
+	//. like inset_frame but uses a brighter background color and
+	//. is a thinner frame.
+
+    /* styled labels */
+    Viewer label(in CharString s);
+
+    /* menus */
+    Menu menubar();
+    Menu pulldown();
+    Menu pullright();
+
+    MenuItem menubar_item(in Glyph g);
+    MenuItem menu_item(in Glyph g);
+    MenuItem check_menu_item(in Glyph g);
+    MenuItem radio_menu_item(in Glyph g, in Telltale group);
+    MenuItem menu_item_separator();
+
+    /* buttons */
+    //- telltale_group
+    Telltale telltale_group();
+	//. Return a telltale object suitable for use with radio buttons
+	//. or other groups of mutually-exclusive choice objects.
+
+    //- push_button, default_button, palette_button
+    Button push_button(in Glyph g, in Action a);
+    Button default_button(in Glyph g, in Action a);
+    Button palette_button(in Glyph g, in Action a);
+	//. Return a button that frames the given glyph and
+	//. executes the given action when clicked.  A default button
+	//. adds some decoration to indicate to the user that
+	//. it is the common choice.  Unlike a push or default button,
+	//. a palette button can be chosen.
+
+    //- check_box
+    Button check_box(in Glyph g, in Action a);
+	//. Return a check box with the check to the left of the
+	//. given glyph.  A check box is a toggle button: choosing it
+	//. when already chosen will cause it to become unchosen.
+
+    //- radio_button
+    Button radio_button(in Glyph g, in Action a, in Telltale group);
+	//. Return a radio button with the given glyph to the right
+	//. of the flag that indicates whether the button is chosen.
+	//. A radio button has a telltale group so that only one button
+	//. in a group will be chosen at any given time.
+
+    //- bounded_float
+    Adjustment bounded_float(in float lower, in float upper, in float initial);
+	//. Return an adjustment for a floating point value
+	//. with given bounds and initial value.
+
+    /* adjusters */
+    //- slider
+    Viewer slider(in Axis a, in Adjustment adj);
+	//. Return a slider displayed along the given axis that
+	//. modifies the given adjustment.
+
+    //- scroll_bar
+    Viewer scroll_bar(in Axis a, in Adjustment adj);
+	//. Return a scroll bar displayed along the given axis that
+	//. modifies the given adjustment.  A scroll bar is just a slider
+	//. with movers on either side that adjust in fixed increments.
+
+    //- panner
+    Viewer panner(in Adjustment x, in Adjustment y);
+	//. Return a panner that is displayed as a rectangular thumb
+	//. in a two-dimensional area.  The thumb's X position adjusts
+	//. the first adjustment parameter; the thumb's y position
+	//. adjusts the second parameter.
+
+    Button zoomer(
+	in Coord scale, in Adjustment x, in Adjustment y, in Adjustment z
+    );
+
+    //- up_mover, down_mover, left_mover, right_mover
+    Button up_mover(in Adjustment a);
+    Button down_mover(in Adjustment a);
+    Button left_mover(in Adjustment a);
+    Button right_mover(in Adjustment a);
+	//. Movers are buttons that modify an adjustment by a fixed
+	//. amount.  The buttons show an arrow pointing up, down, left,
+	//. or right.  The right and down movers increment the
+	//. adjustment's current setting.  The left and up movers
+	//. decrement the setting.
+
+    //- viewer_group
+    Viewer viewer_group(in Glyph g);
+	//. Return a viewer with the given glyph as its body.
+	//. The viewer may contain other viewers and will
+	//. interpret tab to move focus in child order.
+};
+
+#endif

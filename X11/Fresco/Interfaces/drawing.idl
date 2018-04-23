@@ -1,0 +1,515 @@
+/*
+ * Copyright (c) 1987-91 Stanford University
+ * Copyright (c) 1991-93 Silicon Graphics, Inc.
+ * Copyright (c) 1993 Fujitsu, Ltd.
+ *
+ * Permission to use, copy, modify, distribute, and sell this software and 
+ * its documentation for any purpose is hereby granted without fee, provided
+ * that (i) the above copyright notices and this permission notice appear in
+ * all copies of the software and related documentation, and (ii) the names
+ * of Stanford, Silicon Graphics, and Fujitsu may not be used in any
+ * advertising or publicity relating to the software without the specific,
+ * prior written permission of Stanford, Silicon Graphics, and Fujitsu.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS-IS" AND WITHOUT WARRANTY OF ANY KIND, 
+ * EXPRESS, IMPLIED OR OTHERWISE, INCLUDING WITHOUT LIMITATION, ANY 
+ * WARRANTY OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.  
+ *
+ * IN NO EVENT SHALL STANFORD, SILICON GRAPHICS, OR FUJITSU BE LIABLE FOR
+ * ANY SPECIAL, INCIDENTAL, INDIRECT OR CONSEQUENTIAL DAMAGES OF ANY KIND,
+ * OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+ * WHETHER OR NOT ADVISED OF THE POSSIBILITY OF DAMAGE, AND ON ANY THEORY OF 
+ * LIABILITY, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE 
+ * OF THIS SOFTWARE.
+ */
+
+#ifndef Fresco_drawing_idl
+#define Fresco_drawing_idl
+
+#include <X11/Fresco/Interfaces/types.idl>
+
+interface Brush;
+interface Font;
+interface Pattern;
+interface Raster;
+
+//- Color
+interface Color : FrescoObject {
+    //. A color object represents a logical color for output.
+
+    //- Intensity
+    typedef float Intensity;
+	//. A color intensity is a fraction between zero and one
+	//. inclusive, where a value of zero indicates no intensity
+	//. (and therefore will not be visible) and a value of one
+	//. indicates full intensity.
+
+    //- rgb
+    void rgb(out Intensity r, out Intensity g, out Intensity b);
+	//. Return the RGB values for this color.  RGB values are
+	//. device-dependent and should be avoided when possible.
+	//. The returned values are relative to the display
+	//. that created the drawing kit (see Display::drawing_kit).
+
+    //- equal, hash
+    boolean equal(in Color c);
+    unsigned long hash();
+	//. The equal operation tests whether two colors are
+	//. logically the same (the exact comparison depends
+	//. on the underlying color model).  The hash operation
+	//. will return the same value for two equal colors,
+	//. though there is also some chance it will return
+	//. the same value for two unequal colors.
+};
+
+//- Painter
+interface Painter : FrescoObject {
+    //. The painter interface provides a very simple set of operations
+    //. to perform resolution-independent drawing.  The intent is
+    //. to provide enough functionality to implement common
+    //. two-dimensional text and structured graphics objects,
+    //. but the operations should be considered neither
+    //. complete nor particularly convenient.  Some glyphs or viewers
+    //. will need to use more sophisticated graphics libraries,
+    //. such as for 3D graphics or image blending.  It is important
+    //. that a painter implementation be able to use such
+    //. graphics libraries directly and thus allow mixing of
+    //. painter-based objects and objects that make direct calls
+    //. to another graphics library.
+    //.
+    //. A painter object represents the state necessary to perform
+    //. drawing.  If an application wishes to have multiple threads
+    //. drawing at the same time, then each thread should have
+    //. a separate painter.  Unlike X, where a graphics context may be
+    //. used in different windows, a painter is bound to one and
+    //. only one output area (either a portion of the screen or
+    //. a device for printing).
+
+    //- to_coord, to_pixels, to_pixels_coord
+    Coord to_coord(in PixelCoord p);
+    PixelCoord to_pixels(in Coord c);
+    Coord to_pixels_coord(in Coord c);
+	//. These operations convert between pixels and coordinates
+	//. on the painter's screen.  They are equivalent to the
+	//. corresponding screen operations and are provided
+	//. for convenience.
+
+    //- begin_path, move_to, line_to, curve_to, close_path
+    void begin_path();
+    void move_to(in Coord x, in Coord y);
+    void line_to(in Coord x, in Coord y);
+    void curve_to(
+	in Coord x, in Coord y, in Coord x1, in Coord y1,
+	in Coord x2, in Coord y2
+    );
+    void close_path();
+	//. These operations define a path for drawing as in PostScript.
+	//. The move_to operation sets the current position of the
+	//. path, line_to extends the path to a new position along
+	//. a straight line, and curve_to extends the path along
+	//. a Bezier curve.
+	//.
+	//. As an example of the drawing operations, the following
+	//. code draws a filled triangle with corners (x1,y1), (x2,y2) and
+	//. (x3,y3):
+	//{
+	//..    painter->begin_path();
+	//..    painter->move_to(x1, y1);
+	//..    painter->line_to(x2, y2);
+	//..    painter->line_to(x3, y3);
+	//..    painter->close_path();
+	//..    painter->fill();
+	//}
+
+    //- current_brush, current_color, current_font, current_pattern
+    attribute Brush current_brush;
+    attribute Color current_color;
+    attribute Font current_font;
+    attribute Pattern current_pattern;
+	//. These attributes are used by the drawing operations.
+	//. It is the responsibility of objects that perform
+	//. drawing to set these attributes explicitly, or save and
+	//. restore them if desired.
+
+    //- stroke, fill
+    void stroke();
+    void fill();
+	//. The stroke operation draws the current color along
+	//. the current path using the current brush.  The fill operation
+	//. draws the current color inside the current path.
+
+    //- line, rect, fill_rect
+    void line(in Coord x0, in Coord y0, in Coord x1, in Coord y1);
+    void rect(in Coord x0, in Coord y0, in Coord x1, in Coord y1);
+    void fill_rect(in Coord x0, in Coord y0, in Coord x1, in Coord y1);
+	//. These operations are short-hand for drawing common paths.
+	//. The line and rect operations stroke a line segment and
+	//. rectangle, respectively.  The fill_rect operation fills
+	//. a rectangle path.
+
+    //- character
+    void character(in CharCode ch, in Coord width, in Coord x, in Coord y);
+	//. Draw the specified character from the given font
+	//. in a given color, aligning the origin of the character
+	//. at the given position.  The width parameter is merely
+	//. a hint as to the width of the given character
+	//. in the current font.  A painter may use the hint
+	//. to buffer several characters in a single drawing request,
+	//. doing so without explicitly computing the character's width.
+
+    //- image, stencil
+    void image(in Raster r, in Coord x, in Coord y);
+    void stencil(in Raster r, in Coord x, in Coord y);
+	//. The image operation draws the given raster with its origin
+	//. at the given position.  The stencil operation draws
+	//. the current color through the mask defined by the raster,
+	//. aligning its origin with the given position.
+
+    //- current_matrix, push_matrix, pop_matrix, premultiply
+    attribute Transform current_matrix;
+    void push_matrix();
+    void pop_matrix();
+    void premultiply(in Transform t);
+	//. The current_matrix attribute defines the current transformation
+	//. matrix applied to coordinates when drawing.  The
+	//. push_matrix and pop_matrix operations can be used
+	//. to save and restore the matrix.  The premultiply operation
+	//. modifies the current matrix to contain the result of
+	//. multiplying it by the given transformation matrix.
+
+    //- clip, clip_rect, push_clipping, pop_clipping
+    void clip();
+    void clip_rect(in Coord x0, in Coord y0, in Coord x1, in Coord y1);
+    void push_clipping();
+    void pop_clipping();
+	//. The clip operation restricts subsequent drawing to be
+	//. inside the current path.  The clip_rect operation restricts
+	//. drawing within the given rectangle.  Clipping is cumulative;
+	//. that is, two consecutive clip operations will result
+	//. in a clipping region that is the intersection of the
+	//. paths specified by the two requests.  The push_clipping and
+	//. pop_clipping operations can be used to save and restore
+	//. the current clipping region.
+
+    //- is_visible, visible
+    boolean is_visible(in Region r);
+    Region visible();
+	//. The is_visible operation returns true if any portion
+	//. of the given region is within the drawing area defined
+	//. by the clipping region.  The visible operation returns
+	//. the current clip region.
+
+    //- comment
+    void comment(in CharString s);
+	//. This operation may write an annotation in the stream of
+	//. output commands.  As such, it has no effect on the actual
+	//. image generated by the output commands.
+
+    //- page_number
+    void page_number(in CharString s);
+	//. This operation generates page number information where
+	//. meaningful, such as when generating PostScript.
+};
+
+//- Raster
+interface Raster : FrescoObject {
+    //. A raster is a two-dimensional array of primitive elements,
+    //. which are either colors that define a color image or boolean
+    //. values that define a bitmap.
+
+    //- Index
+    typedef long Index;
+	//. The Index type defines the range of values for indices
+	//. into the array of elements.
+
+    //- Element
+    struct Element {
+	boolean on;
+	Color pixel;
+	float blend;
+    };
+	//. A raster element is defined by a boolean value, a color, and
+	//. a blending factor.  The boolean value is synonymous with a
+	//. blending factor of zero (if false) or one (if true).  This
+	//. value provides a convenient way to manipulate bitmaps.
+	//. The blending value defines a factor for alpha blending.
+	//. The value is between zero and one inclusive, where zero
+	//. means nothing is blended and one means everything is blended.
+
+    //- equal, hash
+    boolean equal(in Raster r);
+    unsigned long hash();
+	//. The equal operation tests whether two raster objects
+	//. refer to the same image or bitmap data.  The hash operation
+	//. will return the same value for two equal rasters,
+	//. though there is also some chance it will return
+	//. the same value for two unequal rasters.
+
+    //- rows, columns
+    Index rows();
+    Index columns();
+	//. Return the number of rows and columns in the raster.
+
+    //- origin_x, origin_y
+    Index origin_x();
+    Index origin_y();
+	//. Return the origin of the raster.
+
+    //- peek, poke
+    void peek(in Index row, in Index column, out Element e);
+    void poke(in Index row, in Index column, in Element e);
+	//. The peek operation returns the element at a given position
+	//. in the array; the poke operation sets the element.
+	//. The implementation of these operations should be cheap,
+	//. which in the case of poke means that several operations
+	//. may be deferred until the raster is next displayed.
+
+    //- scale
+    attribute Coord scale;
+	//. Define the mapping between raster indices and coordinates.
+	//. If the scale is zero (the default value), then one index
+	//. will correspond to one pixel on the output device.  Otherwise,
+	//. the scale defines the size of a raster element in
+	//. resolution-independent units.
+};
+
+//- DrawingKit
+interface DrawingKit : FrescoObject {
+    //. The DrawingKit interface defines operations for creating
+    //. common drawing objects, such as brushes, colors, and fonts.
+    //. The initial creation of these objects may be
+    //. display-dependent because the naming of objects
+    //. is often resolved per-display.  However, the objects themselves
+    //. are not display-dependent; they may be used on displays other
+    //. than the one associated with the drawing kit.
+
+    //- Data8, Data32
+    typedef sequence<octet> Data8;
+    typedef sequence<long> Data32;
+	//. These types define sequences of 8-bit or 32-bit values.
+
+    //- drawing_style
+    Style drawing_style();
+	//. Return the default style for the drawing kit, as defined
+	//. by the display from which the drawing kit was created.
+
+    //- simple_brush, dither_brush, patterned_brush
+    Brush simple_brush(in Coord width);
+    Brush dither_brush(in Coord width, in long p);
+    Brush patterned_brush(in Coord width, in Data32 p);
+	//. These operations create brushes.  The brush operation
+	//. creates a solid brush with a given width, the dither_brush
+	//. operation creates a brush with a line style specified
+	//. by a bit vector.  The least significant 16 bits
+	//. of the pattern parameter are interpreted as a bit pattern,
+	//. with ones specifying foreground segments and zeroes
+	//. specifying background segments.
+	//.
+	//. The patterned_brush operation defines the line style
+	//. from an array of 32-bit integer that specify the length
+	//. of successive foreground and background segments.
+	//. Even-numbered array indices (starting from zero) specify
+	//. the length of the foreground segments, odd-numbered indices
+	//. specify the background segments.  The count is the number
+	//. of entries in the array.  The count can be zero, which
+	//. specifies a solid brush.
+
+    //- solid_pattern, halftone_pattern,
+    //- stipple, stipple_4x4
+    Pattern solid_pattern();
+    Pattern halftone_pattern();
+    Pattern stipple(in Data32 d);
+    Pattern stipple_4x4(in unsigned long p);
+
+    //- color_rgb, find_color
+    Color color_rgb(in Color::Intensity r, in Color::Intensity g, in Color::Intensity b);
+    Color find_color(in CharString name);
+	//. These operations return color objects.  The objects
+	//. may be newly-created or may be shared with other
+	//. users of the same color.  The color_rgb operation
+	//. returns a color with the given RGB intensities,
+	//. as defined relative to the drawing kit's display.
+	//. The find_color operation returns the color object (if any)
+	//. associated with the given name.  Color name tables
+	//. may be managed per-display, so the result of this operation
+	//. also depends on the drawing kit's display.
+
+    //- resolve_color, foreground, background
+    Color resolve_color(in Style s, in CharString name);
+    Color foreground(in Style s);
+    Color background(in Style s);
+	//. These operations return a color defined for a particular
+	//. style.  The operations resolve a name in the style
+	//. to a string value and then do the equivalent of
+	//. a find_color operation on that value.  The resolve_color
+	//. operation looks for a color by name.  The foreground operation
+	//. is equivalent to resolve_color with the name "foreground,"
+	//. the background operation looks for the name "background."
+
+    //- find_font, find_font_match
+    Font find_font(in CharString fullname);
+    Font find_font_match(
+	in CharString font_family, in CharString font_style, in Coord ptsize
+    );
+	//. The find_font operation returns the font object defined
+	//. by the given full name.  The find_font_match operation
+	//. finds the best-matching font for the given family,
+	//. style, and point size.  Both operations require a lookup
+	//. that may be display-dependent.
+
+    //- resolve_font, default_font
+    Font resolve_font(in Style s, in CharString name);
+    Font default_font(in Style s);
+	//. The resolve_font operation returns a font specified
+	//. for a particular style.  This operation is equivalent
+	//. to resolving the name in the style to a string value and
+	//. calling find_font on that value.  The default_font operation
+	//. is equivalent to calling resolve_font on the name "font."
+
+    //- bitmap_from_data
+    Raster bitmap_from_data(
+	in Data8 d,
+	in Raster::Index rows, in Raster::Index columns,
+	in Raster::Index origin_row, in Raster::Index origin_column
+    );
+	//- Return a bitmap created from the given data, sizes, and origin.
+
+    //- bitmap_from_char
+    Raster bitmap_from_char(in Font f, in CharCode c);
+	//. The bitmap_char operation creates a bitmap for
+	//. a given character in a font.  In this case the bitmap
+	//. width and height will reflect the actual size of
+	//. the character and the bitmap origin will correspond
+	//. to the character's left bearing and baseline.
+
+    //- raster_open
+    Raster raster_open(in CharString name);
+	//. Return a raster image specified by the given name.
+	//. Typically, the name is a file in some known image
+	//. format such as an X bitmap or TIFF file.
+
+    //- transform_matrix, identity_matrix
+    Transform transform_matrix(in Transform::Matrix m);
+    Transform identity_matrix();
+	//. Return a new transformation matrix.  The transform
+	//. operation is given a complete matrix, the identity_transform
+	//. returns an identity matrix.
+
+    //- printer
+    Painter printer(in CharString output);
+	//. Return a painter that generates printer output.
+	//. The interpretation of the parameter string is system-dependent.
+	//. It could, for example, denote the name of a file in which
+	//. to generate PostScript.  Alternatively, it could contain
+	//. the name of a system printer where output should be sent.
+};
+
+//- Brush
+interface Brush : FrescoObject {
+    //. A brush defines the line thickness and line style for drawing
+    //. operations.  The effect of these operations is as if a line
+    //. segment equal in length to the brush's width were dragged
+    //. along an infinitely thin path between the specified coordinates.
+    //. At each point along the path the brush is angled perpendicular
+    //. to the path.  As a special case, a brush width of zero specifies
+    //. a minimal-width line.  Many devices can render minimal-width
+    //. lines more quickly than wide lines, but the resulting display
+    //. may vary slightly across devices.
+    //.
+    //. A solid brush style paints all pixels along the path with
+    //. a single color.  A dashed brush defines alternating foreground and
+    //. background segments, measured along the length of the path.
+    //. Foreground segments are painted, while background segments are not.
+
+    //- width
+    Coord width();
+	//. Return the width of a brush.
+
+    //- equal, hash
+    boolean equal(in Brush b);
+    unsigned long hash();
+	//. The equal operation tests whether two brushes have
+	//. the same line width and style.  The hash operation
+	//. will return the same value for two equal brushes,
+	//. though there is also some chance it will return
+	//. the same value for two unequal brushes.
+};
+
+//- Font
+interface Font : FrescoObject {
+    //. A font defines a mapping between character codes and their
+    //. appearance on the screen.
+
+    //- Info
+    struct Info {
+	Coord width, height;
+	Coord left_bearing, right_bearing;
+	Coord ascent, descent;
+	Coord font_ascent, font_descent;
+    };
+	//. The Info structure defines font metric information
+	//. for a character, string, or summary information
+	//. for the entire font.  The width and height fields
+	//. define the overall dimensions.  The left_bearing and
+	//. right_bearing fields denote the left and right edges
+	//. inside the width.  The ascent and descent fields
+	//. define the distance to the baseline from the top and
+	//. bottom, respectively.  The font_ascent and font_descent
+	//. fields return the summary baseline information for the font,
+	//. as opposed to the character-specific distances provided
+	//. by ascent and descent.
+
+    //- equal, hash
+    boolean equal(in Font f);
+    unsigned long hash();
+	//. The equal operation tests whether two font objects
+	//. refer to the same font information.  The hash operation
+	//. will return the same value for two equal fonts,
+	//. though there is also some chance it will return
+	//. the same value for two unequal fonts.
+
+    //- name
+    CharString name();
+	//. Return the full name of the font.  The syntax of the name
+	//. is platform-dependent.
+
+    //- encoding
+    CharString encoding();
+	//. Return the character set identification, such as "iso8859"
+	//. for ISO Latin.
+
+    //- point_size
+    Coord point_size();
+	//. Return the point size of the font.
+
+    //- font_info, char_info, string_info
+    void font_info(out Font::Info i);
+    void char_info(in CharCode c, out Font::Info i);
+    void string_info(in CharString s, out Font::Info i);
+	//. Return font metric information.  The font_info operation
+	//. returns summary metrics for all characters, char_info
+	//. returns metrics for a particular character, and
+	//. string_info returns metrics for a string of characters.
+};
+
+//- Pattern
+interface Pattern : FrescoObject {
+    //. A pattern describes a simple way to fill an area.
+    //. Pixels that correspond to zeros in the pattern are not drawn;
+    //. pixels that correspond to ones are drawn in the current color.
+
+    //- equal, hash
+    boolean equal(in Pattern p);
+    unsigned long hash();
+	//. The equal operation tests whether two patterns objects
+	//. refer to the same information.  The hash operation
+	//. will return the same value for two equal patterns,
+	//. though there is also some chance it will return
+	//. the same value for two unequal patterns.
+
+    //- stipple
+    void stipple(out DrawingKit::Data32 d);
+	//. Retrieve the stipple data associated with this pattern.
+};
+
+#endif

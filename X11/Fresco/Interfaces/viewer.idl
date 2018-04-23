@@ -1,0 +1,306 @@
+/*
+ * Copyright (c) 1992-1993 Silicon Graphics, Inc.
+ * Copyright (c) 1993 Fujitsu, Ltd.
+ *
+ * Permission to use, copy, modify, distribute, and sell this software and 
+ * its documentation for any purpose is hereby granted without fee, provided
+ * that (i) the above copyright notices and this permission notice appear in
+ * all copies of the software and related documentation, and (ii) the name of
+ * Silicon Graphics and Fujitsu may not be used in any advertising or
+ * publicity relating to the software without the specific, prior written
+ * permission of Silicon Graphics and Fujitsu.
+ *
+ * THE SOFTWARE IS PROVIDED "AS-IS" AND WITHOUT WARRANTY OF ANY KIND, 
+ * EXPRESS, IMPLIED OR OTHERWISE, INCLUDING WITHOUT LIMITATION, ANY 
+ * WARRANTY OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.  
+ *
+ * IN NO EVENT SHALL SILICON GRAPHICS OR FUJITSU BE LIABLE FOR
+ * ANY SPECIAL, INCIDENTAL, INDIRECT OR CONSEQUENTIAL DAMAGES OF ANY KIND,
+ * OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+ * WHETHER OR NOT ADVISED OF THE POSSIBILITY OF DAMAGE, AND ON ANY THEORY OF 
+ * LIABILITY, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE 
+ * OF THIS SOFTWARE.
+ */
+
+#ifndef Fresco_viewer_idl
+#define Fresco_viewer_idl
+
+#include <X11/Fresco/Interfaces/display.idl>
+#include <X11/Fresco/Interfaces/glyph.idl>
+
+interface Focus;
+
+//- Event*
+interface Event : FrescoObject {
+    //. An event is a device-level object that arrives on a single stream
+    //. per display.
+
+    //- ButtonIndex
+    typedef long ButtonIndex;
+	//. A button index is an integer value that indicates
+	//. to which button a down or up event refers.
+
+    //- KeySym, KeyChord
+    typedef unsigned long KeySym;
+    typedef sequence<KeySym> KeyChord;
+	//. A keysym is an integer value that identifies
+	//. a key (as opposed to an interpretation of that key
+	//. in a particular character set).  X11 defines
+	//. the standard keysym values supported by Fresco;
+	//. some platforms may offer additional possible values.
+
+    //- TimeStamp
+    typedef unsigned long TimeStamp;
+	//. A time stamp on an event is an integral number of milliseconds.
+
+    //- Modifier
+    enum Modifier { control, shift, capslock, meta };
+	//. A modifier is a key that is normally held down
+	//. when entering a second key.
+
+    //- TypeId
+    enum TypeId {
+	motion, enter, leave, down, up, key_press, key_release,
+	focus_in, focus_out, other
+    };
+	//. The predefined event types are pointer motion, pointer enter
+	//. or leave the main viewer, button down, button up, key press
+	//. or release, and receiving or losing focus.  Most platforms
+	//. provide additional kinds of events, which will be delivered
+	//. to a viewer with the type other.  An application object
+	//. wishing to process other events can narrow the event object
+	//. to the platform-specific event type.
+
+    //- type
+    Event::TypeId type();
+	//. Return the event's type.
+
+    //- time
+    Event::TimeStamp time();
+	//. Return a time-stamp indicating when the event occurred.
+
+    //- double_click
+    boolean double_click(in Event::TimeStamp previous);
+	//. Return true if the difference between the event's time-stamp
+	//. and the given time-stamp is below the double click
+	//. threshold defined by the event's display.
+
+    //- positional
+    boolean positional();
+	//. The event specifies a position, such as for a pointing device.
+	//. Focused (non-positional) events may also report the current
+	//. location of a pointing device, but will return false
+	//. to this operation.
+
+    //- pointer_x, pointer_y
+    Coord pointer_x();
+    Coord pointer_y();
+	//. Return the pointer location for the event in coordinates
+	//. relative to the lower-left corner of the main viewer
+	//. in which the event occurred, or in the case of dragging
+	//. the coordinates are relative to where the original down
+	//. event occurred.  Pointer locations are defined for motion,
+	//. button, and keyboard events.  The values for other events
+	//. are undefined.
+
+    //- pointer_button
+    Event::ButtonIndex pointer_button();
+	//. Return the button associated with a down or up event.
+	//. The return value is undefined for non-button events.
+
+    //- button_is_down
+    boolean button_is_down(in Event::ButtonIndex b);
+	//. Return true if the specified button was down \emphasis{before}
+	//. the event occurred.
+
+    //- modifier_is_down
+    boolean modifier_is_down(in Event::Modifier m);
+	//. Return true if the given modifier was down \emphasis{before}
+	//. the event occurred.
+
+    //- keysym, character
+    Event::KeySym key();
+    CharCode character();
+	//. Return the keysym or character code associated with
+	//. a key event.  The result is undefined for non-key events.
+
+    //- unread
+    void unread();
+	//. Put the event back on the input queue for re-delivery.
+};
+
+//- Viewer*
+interface Viewer : Glyph {
+    //. The Viewer interface defines the mechanisms for the logical
+    //. composition of user interface objects.  Viewer is a Glyph subtype
+    //. and can delegate the presentation and geometry of the
+    //. viewer to another glyph using Glyph::body.
+    //.
+    //. A viewer implementation should define the pick operation to be
+    //. opaque in the sense that the viewer should appear as a leaf glyph
+    //. relative to pick calls.  This approach hides the viewer's
+    //. structure from surrounding objects.
+    //.
+    //. Unlike glyphs, which may be organized with sharing to form
+    //. a directed-acyclic graph, viewers must be organized in
+    //. a strict hierarchy.  Using a hierarchy simplifies
+    //. input handling and focus management.  A separate edge
+    //. interface like GlyphOffset is therefore not necessary--
+    //. viewers can perform the operations of both nodes and edges
+    //. in a hierarchy.
+    //.
+    //. Every viewer defines a unique style with an alias identifying
+    //. the type of viewer.  Application objects should set the name
+    //. of a viewer's style to provide a convenient mechanism
+    //. for customizing a particular instance.  Setting a viewer's style
+    //. using the Glyph::style attribute will actually set the
+    //. parent style.  By default, the parent style is the style
+    //. of the viewer's parent.  Furthermore, because of the one-to-one
+    //. relationship between a viewer and its style, an implementation
+    //. may choose to represent the viewer and style as a single object
+    //. that supports both interfaces (where retrieving viewer->style()
+    //. simply returns the viewer itself).
+
+    //- parent_viewer, next_viewer, prev_viewer
+    //- first_viewer, last_viewer
+    Viewer parent_viewer();
+    Viewer next_viewer();
+    Viewer prev_viewer();
+    Viewer first_viewer();
+    Viewer last_viewer();
+	//. These operations provide hierarchy information
+	//. starting from a viewer, returning the parent,
+	//. right sibling, left sibling, first child, and last child,
+	//. respectively.  If the requested viewer does not exist,
+	//. such as the right sibling for the last viewer
+	//. in a list, then the operation returns a nil reference.
+
+    //- append_viewer, prepend_viewer
+    void append_viewer(in Viewer v);
+    void prepend_viewer(in Viewer v);
+	//. These operations modify the viewer hierarchy
+	//. adding a child at the beginning or end of this viewer's
+	//. list of children.
+
+    //- insert_viewer, replace_viewer
+    void insert_viewer(in Viewer v);
+    void replace_viewer(in Viewer v);
+	//. These operations modify the viewer hierarchy
+	//. by adding or replacing a new viewer at the position
+	//. of this viewer.
+
+    //- remove_viewer
+    void remove_viewer();
+	//. Remove this viewer from its place in the hierarchy.
+
+    //- set_viewer_links, set_first_viewer, set_last_viewer
+    void set_viewer_links(in Viewer parent, in Viewer prev, in Viewer next);
+    void set_first_viewer(in Viewer v);
+    void set_last_viewer(in Viewer v);
+	//. These operations explicitly modify the links between viewers.
+	//. They need not be called directly, but are used to maintain
+	//. the viewer tree.
+	//.
+	//. The set_viewer_links operation modifies the parent, next, and
+	//. previous links associated with a viewer.  If the parent
+	//. is a nil reference, then a nil sibling reference will be
+	//. ignored.  Otherwise, the parent and siblings will all be set.
+
+    //- request_focus
+    Focus request_focus(in Viewer requestor, in boolean temporary);
+	//. Ask for input focus.  Normally, a viewer will call this
+	//. operation on its parent.  The parent, in turn, may propagate
+	//. the call to its parent.  The original caller passes
+	//. itself as the requestor, and the same requesting viewer
+	//. is passed if the call is propagated.
+	//.
+	//. If focus is granted to the requestor, the operation
+	//. returns the focus object (normally associated with
+	//. the root viewer of the hierarchy.  If focus is not granted,
+	//. then the operation returns nil.
+	//.
+	//. Transient dialogs normally request focus temporarily
+	//. by passing true as the second parameter to request_focus.
+	//. This flag lets the current focus viewer know that it will
+	//. probably regain focus shortly and might not wish to change
+	//. its decoration in the same manner as a normal focus change.
+
+    //- receive_focus
+    boolean receive_focus(in Focus f, in boolean primary);
+	//. Notify a viewer that it has acquired input focus.
+	//. The operation returns whether the viewer accepts
+	//. the input focus.  If the viewer does accept, then
+	//. it should perform the appropriate operations
+	//. on the focus object, such as installing key translations.
+	//. If the primary parameter is true, then this viewer
+	//. is the lowest level viewer receiving focus.  If primary
+	//. is false, then this viewer contains a descendant
+	//. that is the new focus.
+
+    //- lose_focus
+    void lose_focus(in boolean temporary);
+	//. Notify a viewer that it is losing input focus.
+	//. If the temporary parameter is true, then the viewer
+	//. will regain shortly, as soon as a transient such
+	//. as a dialog finishes.
+
+    //- first_focus, last_focus, next_focus, prev_focus
+    boolean first_focus();
+    boolean last_focus();
+    boolean next_focus();
+    boolean prev_focus();
+	//. These operations ask that this viewer "move" the input
+	//. focus inside itself, such as tabbing through the children
+	//. in the hierarchy.  The first_focus and last_focus
+	//. operations ask focus to enter the viewer at the beginning
+	//. or end, respectively.  The next_focus and prev_focus
+	//. operations ask to move focus to the right or left sibling,
+	//. respectively.
+
+    //- handle
+    boolean handle(in GlyphTraversal t, in Event e);
+	//. Respond to the given input event.  If the viewer cannot
+	//. handle the event for any reason, then this operation
+	//. should return false so that the caller may attempt
+	//. to find another viewer to handle the event.
+
+    //- close
+    void close();
+	//. Respond to the user closing the viewer.
+};
+
+//- Focus*
+interface Focus : FrescoObject {
+    //. Every viewer hierarchy has a focus object at the root
+    //. that holds shared information for all the viewers.
+    //. In addition to maintaining which viewer has input focus,
+    //. the focus object can coordinate input translation,
+    //. shared menubar state, and shared tool palettes.
+
+    //- add_focus_interest
+    void add_focus_interest(in Viewer v);
+	//. Add the given viewer to the list of viewers that
+	//. are on the path from the main viewer to the focus viewer.
+
+    //- receive_focus_below, lose_focus_below
+    void receive_focus_below(in Viewer v, in boolean temporary);
+    void lose_focus_below(in Viewer v, in boolean temporary);
+	//. Notify all the viewers on the interest list
+	//. that they have received or lost the input focus.
+
+    //- map_keystroke, map_keychord
+    void map_keystroke(in Event::KeySym k, in Action a);
+    void map_keychord(in Event::KeyChord k, in Action a);
+	//. Specify a translation for a key event to an action.
+	//. The map_keystroke operation defines the mapping for
+	//. a given keysym, map_keychord maps a sequence of keysyms.
+	//. The order of modifiers in a keychord is ignored;
+	//. an event will be mapped if the modifiers in the sequence
+	//. are down.
+	//.
+	//. If the main viewer receives a key event that is mapped,
+	//. it will perform the action immediately rather than
+	//. pass it to the focus viewer.
+};
+
+#endif

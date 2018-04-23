@@ -1,0 +1,368 @@
+/*
+ * Copyright (c) 1987-91 Stanford University
+ * Copyright (c) 1991-93 Silicon Graphics, Inc.
+ * Copyright (c) 1993 Fujitsu, Ltd.
+ *
+ * Permission to use, copy, modify, distribute, and sell this software and 
+ * its documentation for any purpose is hereby granted without fee, provided
+ * that (i) the above copyright notices and this permission notice appear in
+ * all copies of the software and related documentation, and (ii) the names
+ * of Stanford, Silicon Graphics, and Fujitsu may not be used in any
+ * advertising or publicity relating to the software without the specific,
+ * prior written permission of Stanford, Silicon Graphics, and Fujitsu.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS-IS" AND WITHOUT WARRANTY OF ANY KIND, 
+ * EXPRESS, IMPLIED OR OTHERWISE, INCLUDING WITHOUT LIMITATION, ANY 
+ * WARRANTY OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.  
+ *
+ * IN NO EVENT SHALL STANFORD, SILICON GRAPHICS, OR FUJITSU BE LIABLE FOR
+ * ANY SPECIAL, INCIDENTAL, INDIRECT OR CONSEQUENTIAL DAMAGES OF ANY KIND,
+ * OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+ * WHETHER OR NOT ADVISED OF THE POSSIBILITY OF DAMAGE, AND ON ANY THEORY OF 
+ * LIABILITY, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE 
+ * OF THIS SOFTWARE.
+ */
+
+#ifndef Fresco_layouts_idl
+#define Fresco_layouts_idl
+
+#include <X11/Fresco/Interfaces/glyph.idl>
+
+interface Color;
+interface Font;
+
+//- LayoutKit*
+interface LayoutKit : FrescoObject {
+    //. LayoutKit provides operations for creating glyphs that
+    //. are useful in managing the arrangement of one or more glyphs.
+    //. Many of the LayoutKit objects are modelled after
+    //. Knuth's TeX document processing system.
+
+    //- fil
+    attribute Coord fil;
+	//. The "fil" attribute defines an "infinite" coordinate
+	//. for the purposes of specifying stretchability that
+	//. is large relative to other objects.
+
+    //- hbox, vbox
+    Glyph hbox();
+    Glyph vbox();
+	//. An hbox tiles its children left-to-right along
+	//. the X axis and aligns their origins along the Y axis.
+	//. A vbox tiles its children top-to-bottom along the 
+	//. Y axis and aligns their origins along the X axis.
+	//. The natural, minimum, and maximum sizes along
+	//. the tiling axis are the sums of the child natural,
+	//. minimum, and maximum sizes, respectively.  The natural
+	//. size along the alignment axis is the maximum of the child
+	//. natural sizes.  The minimum size along the alignment
+	//. axis is the maximum of the child minimum sizes.
+	//. The maximum size along the alignment axis is the
+	//. minimum of the child maximum sizes.
+	//.
+	//. The X alignment of an hbox is the left side of the box.
+	//. The Y alignment of a vbox is the top side of the box.
+
+    //- hbox_aligned, vbox_aligned
+    Glyph hbox_first_aligned();
+    Glyph vbox_first_aligned();
+	//. These operations are variations on hbox and vbox,
+	//. returning objects that only differ in their
+	//. alignment along the tiling axis.  Both
+	//. hbox_first_aligned and vbox_first_aligned
+	//. use the alignment of their first component
+	//. for their alignment along the tiling axis.
+
+    //- overlay
+    Glyph overlay();
+	//. An overlay aligns the origins of its children
+	//. along both the X and Y axis.  Overlays draw
+	//. their children first-to-last, guaranteeing that
+	//. the later glyphs will appear "above" earlier glyphs
+	//. with the same z-coordinate.
+
+    //- deck
+    Glyph deck();
+	//. A deck is an aggregate that only shows one of its children
+	//. at a time.  The natural size of a deck is the maximum size
+	//. of the natural sizes of its children.  Regardless of
+	//. the flexibility of their children, decks are rigid.
+
+    //- back
+    Glyph back(in Glyph g, in Glyph under);
+	//. Return a glyph that draws the second parameter glyph
+	//. first, then draws the body specified by the first parameter.
+	//. Structural operations such as Glyph::append are delegated
+	//. to the body glyph.
+
+    //- front
+    Glyph front(in Glyph g, in Glyph over);
+	//. Return a glyph that draws the body glyph first,
+	//. specified by the first parameter, and then
+	//. draws the second parameter glyph.
+	//. Structural operations such as Glyph::append are delegated
+	//. to the body glyph.
+
+    //- between
+    Glyph between(in Glyph g, in Glyph under, in Glyph over);
+	//. Return a glyph that draws the second parameter glyph first,
+	//. then the body glyph specified by the first parameter, and
+	//. then the third parameter glyph.
+	//. Structural operations such as Glyph::append are delegated
+	//. to the body glyph.
+
+    //- glue
+    Glyph glue(
+	in Axis a,
+	in Coord natural, in Coord stretch, in Coord shrink, in Alignment align
+    );
+	//. Glue is the TeX term for flexible spacing between
+	//. other glyphs.  LayoutKit provides a variety of operations
+	//. for creating glue objects.  The glue operation is
+	//. the most general, specifying the axis of flexibility,
+	//. the natural size, stretchability, shrinkability, and
+	//. alignment along that axis.  A glue object's requirement
+	//. along other axes is undefined.
+
+    //- glue_requisition
+    Glyph glue_requisition(in Glyph::Requisition r);
+	//. Return a glue object that uses the given requisition
+	//. as its desired size.
+
+    //- hglue, hfil, hglue_fil, hglue_aligned, hspace
+    Glyph hfil();
+    Glyph hglue_fil(in Coord natural);
+    Glyph hglue(in Coord natural, in Coord stretch, in Coord shrink);
+    Glyph hglue_aligned(
+	in Coord natural, in Coord stretch, in Coord shrink, in Alignment a
+    );
+    Glyph hspace(in Coord natural);
+	//. Return different kinds of horizontal glue.  The hfil and
+	//. hglue_fil operations return glue that is infinitely
+	//. stretchable and not shrinkable; hfil has zero for its
+	//. natural size.  The hglue and hglue_aligned operations
+	//. return horizontal glue with the given sizes.  The hspace
+	//. operation returns rigid glue.
+
+    //- vglue, vfil, vglue_fil, vglue_aligned, vspace
+    Glyph vfil();
+    Glyph vglue_fil(in Coord natural);
+    Glyph vglue(in Coord natural, in Coord stretch, in Coord shrink);
+    Glyph vglue_aligned(
+	in Coord natural, in Coord stretch, in Coord shrink, in Alignment a
+    );
+    Glyph vspace(in Coord natural);
+	//. Return different kinds of vertical glue.  The vfil and
+	//. vglue_fil operations return glue that is infinitely
+	//. stretchable and not shrinkable; vfil has zero for its
+	//. natural size.  The vglue and vglue_aligned operations
+	//. return vertical glue with the given sizes.  The vspace
+	//. operation returns rigid glue.
+
+    //- shape_of, shape_of_xy, shape_of_xyz
+    Glyph shape_of(in Glyph g);
+    Glyph shape_of_xy(in Glyph gx, in Glyph gy);
+    Glyph shape_of_xyz(in Glyph gx, in Glyph gy, in Glyph gz);
+	//. Return a glyph that has the same desired size as
+	//. the given glyph or glyphs, but does not perform
+	//. any drawing.  The shape_of operation has the same
+	//. sizes as a given glyph along all axes, shape_of_xy
+	//. uses different glyphs for the X and Y axis, and
+	//. shape_of_xyz also uses a different glyph for the Z axis
+	//. (shape_of_xy returns a glyph whose Z requirement
+	//. is undefined).
+
+    //- strut
+    Glyph strut(
+	in Font f, in Coord natural, in Coord stretch, in Coord shrink
+    );
+
+    //- hstrut
+    Glyph hstrut(
+	in Coord right_bearing, in Coord left_bearing,
+	in Coord natural, in Coord stretch, in Coord shrink
+    );
+
+    //- vstrut
+    Glyph vstrut(
+	in Coord ascent, in Coord descent,
+	in Coord natural, in Coord stretch, in Coord shrink
+    );
+
+    //- spaces
+    Glyph spaces(
+	in long count, in Coord each, in Font f, in Color c
+    );
+	//. Return glue that corresponds to a given number of spaces
+	//. of a given width in a given font.  The font determines
+	//. the origin of the glue.  Unlike other glue objects,
+	//. which despite begin generally referred to as
+	//. "white space" do not actually have an appearance,
+	//. spaces are drawn in the given color.
+
+    //- center, center_aligned, center_axis
+    Glyph center(in Glyph g);
+    Glyph center_aligned(in Glyph g, in Alignment x, in Alignment y);
+    Glyph center_axis(in Glyph g, in Axis a, in Alignment align);
+	//. Return a glyph that positions a given glyph according
+	//. to a given alignment.  The center operation uses
+	//. an alignment of 0.5, which effectively centers
+	//. the interior glyph inside an allocation.
+
+    //- hcenter, hcenter_aligned, vcenter, vcenter_aligned
+    Glyph hcenter(in Glyph g);
+    Glyph hcenter_aligned(in Glyph g, in Alignment x);
+    Glyph vcenter(in Glyph g);
+    Glyph vcenter_aligned(in Glyph g, in Alignment y);
+	//. Return a glyph that positions a given glyph
+	//. in one dimension according to a given alignment.
+	//. The hcenter and vcenter operations use
+	//. an alignment of 0.5, which effectively centers
+	//. the interior glyph along the X or Y axis, respectively.
+
+    //- fixed, fixed_axis, hfixed, vfixed
+    Glyph fixed(in Glyph g, in Coord x, in Coord y);
+    Glyph fixed_axis(in Glyph g, in Axis a, in Coord size);
+    Glyph hfixed(in Glyph g, in Coord x);
+    Glyph vfixed(in Glyph g, in Coord y);
+	//. These operations return a glyph that makes a given glyph
+	//. act rigid even if it is flexible.  Fixed glyphs
+	//. are ideal for specifying sizes that are otherwise undefined,
+	//. such as the initial dimensions of a file chooser.
+	//. The fixed operation returns a glyph fixed with given
+	//. width and height natural sizes.  The fixed_axis operation
+	//. returns a glyph fixed in one dimension.  The
+	//. hfixed and vfixed operations return fixed glyphs
+	//. for the horizontal and vertical axes, respectively.
+
+    //- flexible, flexible_fil, flexible_axis,
+    //- hflexible, vflexible
+    Glyph flexible(in Glyph g, in Coord stretch, in Coord shrink);
+    Glyph flexible_fil(in Glyph g);
+    Glyph flexible_axis(
+	in Glyph g, in Axis a, in Coord stretch, in Coord shrink
+    );
+    Glyph hflexible(in Glyph g, in Coord stretch, in Coord shrink);
+    Glyph vflexible(in Glyph g, in Coord stretch, in Coord shrink);
+	//. These operations return a glyph that makes a given glyph
+	//. act flexible even if is rigid.  The flexible operation
+	//. returns a glyph with a given stretchability and
+	//. shrinkability along all axes.  The flexible_fil operation
+	//. is equivalent to calling flexible with fil stretchability and
+	//. zero shrinkability.  The hflexible and vflexible operations
+	//. return a glyph with a given flexibility in the X or Y axis,
+	//. respectively.
+
+    //- natural, natural_axis, hnatural, vnatural
+    Glyph natural(in Glyph g, in Coord x, in Coord y);
+    Glyph natural_axis(in Glyph g, in Axis a, in Coord size);
+    Glyph hnatural(in Glyph g, in Coord x);
+    Glyph vnatural(in Glyph g, in Coord y);
+	//. These operations return a glyph that makes a given glyph
+	//. have a specified natural size instead of the glyph's
+	//. original natural size.  Natural glyphs do not affect
+	//. the rigidity of the given glyph.  The natural operation
+	//. returns a glyph with a given natural width and height.
+	//. The natural_axis operation returns a glyph with a given
+	//. natural size along a given axis.  The hnatural and vnatural
+	//. operations return a glyph with the given natural size
+	//. along the X or Y axis, respectively.
+
+    //- margin, margin_lrbt, margin_lrbt_flexible
+    Glyph margin(in Glyph g, in Coord all);
+    Glyph margin_lrbt(
+	in Glyph g,
+	in Coord lmargin, in Coord rmargin, in Coord bmargin, in Coord tmargin
+    );
+    Glyph margin_lrbt_flexible(
+	in Glyph g,
+	in Coord lmargin, in Coord lstretch, in Coord lshrink,
+	in Coord rmargin, in Coord rstretch, in Coord rshrink,
+	in Coord bmargin, in Coord bstretch, in Coord bshrink,
+	in Coord tmargin, in Coord tstretch, in Coord tshrink
+    );
+	//. These operations return a glyph that extends the
+	//. size of a glyph to leave room for a margin of a given size.
+	//. The margin operation returns a glyph with the same fixed size
+	//. for the left, right, bottom, and top margins.
+	//. The margin_lbrt operation returns a glyph with specified
+	//. fixed sizes for each margin.  The margin_lrbt_flexible
+	//. operation is the most general, returning a glyph
+	//. with independent sizes and flexibility for each margin.
+
+    //- hmargin, hmargin_lr, hmargin_lr_flexible
+    Glyph hmargin(in Glyph g, in Coord both);
+    Glyph hmargin_lr(in Glyph g, in Coord lmargin, in Coord rmargin);
+    Glyph hmargin_lr_flexible(
+	in Glyph g,
+	in Coord lmargin, in Coord lstretch, in Coord lshrink,
+	in Coord rmargin, in Coord rstretch, in Coord rshrink
+    );
+	//. These operations are short-hand for specifying
+	//. margin glyphs with zero-size top and bottom margins.
+	//. The hmargin operation is equivalent to
+	//. "margin_lrbt(g, both, both, 0, 0)."  The hmargin_lr operation
+	//. is equivalent to "margin_lrbt(g, lmargin, rmargin, 0, 0)."
+	//. The hmargin_lr_flexible operation is equivalent to
+	//. "margin_lrbt_flexible(g, lmargin, lstretch, lshrink,
+	//. rmargin, rstretch, rshrink, 0, 0, 0, 0, 0, 0)."
+
+    //- vmargin, vmargin_bt, vmargin_bt_flexible
+    Glyph vmargin(in Glyph g, in Coord both);
+    Glyph vmargin_bt(in Glyph g, in Coord bmargin, in Coord tmargin);
+    Glyph vmargin_bt_flexible(
+	in Glyph g,
+	in Coord bmargin, in Coord bstretch, in Coord bshrink,
+	in Coord tmargin, in Coord tstretch, in Coord tshrink
+    );
+	//. These operations are short-hand for specifying
+	//. margin glyphs with zero-size left and right margins.
+	//. The vmargin operation is equivalent to
+	//. "margin_lrbt(g, 0, 0, both, both)."  The vmargin_bt operation
+	//. is equivalent to "margin_lrbt(g, 0, 0, bmargin, tmargin)."
+	//. The vmargin_bt_flexible operation is equivalent to
+	//. "margin_lrbt_flexible(g, 0, 0, 0, 0, 0, 0,
+	//. bmargin, bstretch, bshrink, tmargin, tstretch, tshrink)."
+
+    //- lmargin, lmargin_flexible
+    Glyph lmargin(in Glyph g, in Coord natural);
+    Glyph lmargin_flexible(
+	in Glyph g, in Coord natural, in Coord stretch, in Coord shrink
+    );
+	//. These operations return a glyph with a left margin.
+	//. The lmargin operation is equivalent to
+	//. "hmargin(g, natural, 0)." The lmargin_flexible operation is
+	//. equivalent to "hmargin(g, natural, stretch, shrink, 0, 0, 0)."
+
+    //- rmargin, rmargin_flexible
+    Glyph rmargin(in Glyph g, in Coord natural);
+    Glyph rmargin_flexible(
+	in Glyph g, in Coord natural, in Coord stretch, in Coord shrink
+    );
+	//. These operations return a glyph with a right margin.
+	//. The rmargin operation is equivalent to
+	//. "hmargin(g, 0, natural)." The rmargin_flexible operation is
+	//. equivalent to "hmargin(g, 0, 0, 0, natural, stretch, shrink)."
+
+    //- bmargin, bmargin_flexible
+    Glyph bmargin(in Glyph g, in Coord natural);
+    Glyph bmargin_flexible(
+	in Glyph g, in Coord natural, in Coord stretch, in Coord shrink
+    );
+	//. These operations return a glyph with a bottom margin.
+	//. The bmargin operation is equivalent to
+	//. "vmargin(g, natural, 0)." The bmargin_flexible operation is
+	//. equivalent to "vmargin(g, natural, stretch, shrink, 0, 0, 0)."
+
+    //- tmargin, tmargin_flexible
+    Glyph tmargin(in Glyph g, in Coord natural);
+    Glyph tmargin_flexible(
+	in Glyph g, in Coord natural, in Coord stretch, in Coord shrink
+    );
+	//. These operations return a glyph with a top margin.
+	//. The tmargin operation is equivalent to
+	//. "vmargin(g, 0, natural)." The tmargin_flexible operation is
+	//. equivalent to "vmargin(g, 0, 0, 0, natural, stretch, shrink)."
+};
+
+#endif
